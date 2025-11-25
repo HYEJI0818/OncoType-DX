@@ -40,7 +40,7 @@ export default function UploadPage() {
   };
 
 
-  // 파일명에서 MRI 시퀀스 타입 자동 감지
+  // 파일명에서 CT 시퀀스 타입 자동 감지
   const detectSequenceType = (fileName: string): keyof FileSlots | null => {
     const lowerName = fileName.toLowerCase();
     
@@ -289,9 +289,9 @@ export default function UploadPage() {
                   </div>
                   
                   <div className="text-gray-400">
-                    <p className="text-xl font-medium">NIfTI 파일을 업로드하세요</p>
+                    <p className="text-xl font-medium">NIfTI CT 파일을 업로드하세요</p>
                     <p className="text-base mt-3">
-                      .nii.gz 또는 .nii 파일을 최대 4개까지 선택할 수 있습니다
+                      .nii.gz 또는 .nii CT 파일을 최대 4개까지 선택할 수 있습니다
                     </p>
                     <p className="text-sm mt-2 text-gray-500">
                       T1, T1CE, T2, FLAIR 순서로 자동 배치됩니다

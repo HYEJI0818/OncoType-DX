@@ -1368,7 +1368,7 @@ export default function NiiVueSliceViewer({
           {!file && !isLoading && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-gray-400 text-sm text-center">
-                <div>No MRI data</div>
+                <div>No CT data</div>
                 <div>Upload NIfTI file</div>
               </div>
             </div>

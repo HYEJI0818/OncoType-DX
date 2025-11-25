@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-BTumor Flask 마이크로서비스 API 서버
+OncoType DX Flask 마이크로서비스 API 서버
 업로드된 파일 관리 및 AI 분석 결과 처리
 """
 
@@ -380,7 +380,7 @@ def too_large(e):
     }), 413
 
 if __name__ == '__main__':
-    print("🚀 BTumor Flask 마이크로서비스 시작")
+    print("🚀 OncoType DX Flask 마이크로서비스 시작")
     print(f"📁 업로드 폴더: {UPLOAD_FOLDER.absolute()}")
     print("🌐 서버 주소: http://localhost:5001")
     print("📋 API 문서:")

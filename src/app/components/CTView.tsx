@@ -7,7 +7,7 @@ interface NiftiHeader {
   [key: string]: unknown;
 }
 
-interface MRIViewProps {
+interface CTViewProps {
   title: string;
   leftLabel?: string;
   rightLabel?: string;
@@ -23,7 +23,7 @@ interface MRIViewProps {
   tumorOverlayUrl?: string | null; // Tumor 오버레이 URL 추가
 }
 
-export default function MRIView({ 
+export default function CTView({ 
   title, 
   leftLabel = 'R', 
   rightLabel = 'L',
@@ -37,7 +37,7 @@ export default function MRIView({
   originalNiftiUrl,
   globalSelectedSegFile,
   tumorOverlayUrl
-}: MRIViewProps) {
+}: CTViewProps) {
   return (
     <div className={`relative ${className}`}>
       {/* NiiVueSliceViewer 사용 */}

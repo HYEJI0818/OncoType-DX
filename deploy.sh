@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🚀 btumor 뇌종양 진단 시스템 배포 시작..."
+echo "🚀 OncoType DX 유방암 분석 시스템 배포 시작..."
 
 # 환경 변수 확인
 echo "📋 환경 변수 확인 중..."
@@ -24,7 +24,7 @@ if [ $? -eq 0 ]; then
   
   echo "✅ 배포 완료!"
   echo ""
-  echo "🎉 btumor 뇌종양 진단 시스템이 성공적으로 배포되었습니다!"
+  echo "🎉 OncoType DX 유방암 분석 시스템이 성공적으로 배포되었습니다!"
   echo ""
   echo "📋 배포된 기능들:"
   echo "- ✅ NIfTI 파일 뷰어 (압축 파일 지원)"

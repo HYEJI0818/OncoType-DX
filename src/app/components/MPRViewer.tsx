@@ -2945,7 +2945,7 @@ Oblique
         {/* TUMOR 버튼을 뷰 모드 버튼 바로 옆으로 이동 */}
         {segmentationFiles.length > 0 && (
           <div className="flex items-center gap-1">
-            <span className="text-white text-xs">MRI file</span>
+            <span className="text-white text-xs">CT file</span>
             <div className="relative">
               <button
                 onClick={() => {
@@ -3054,7 +3054,7 @@ Oblique
         {!file && !isLoading && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-gray-400 text-center">
-              <div className="text-xl">No MRI data</div>
+              <div className="text-xl">No CT data</div>
               <div className="text-xl">Upload NIfTI file</div>
             </div>
           </div>

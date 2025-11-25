@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from '@/contexts/EnhancedTranslationContext';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardHeader from './DashboardHeader';
-import MRIView from './MRIView';
+import CTView from './CTView';
 import Brain3DView from './Brain3DView';
 import FeatureTable from './FeatureTable';
 import ShapleyChart from './ShapleyChart';
@@ -365,7 +365,7 @@ export default function MainDashboard() {
                   />
                   
                   {/* 두 번째 뷰어 - Axial */}
-                  <MRIView
+                  <CTView
                     title={currentSequence ? `${t.axialView} (${currentSequence})` : t.axialView}
                     leftLabel="R"
                     rightLabel="L"
@@ -381,7 +381,7 @@ export default function MainDashboard() {
                   />
                   
                   {/* 세 번째 뷰어 - Coronal */}
-                  <MRIView
+                  <CTView
                     title={currentSequence ? `${t.coronalView} (${currentSequence})` : t.coronalView}
                     leftLabel="R"
                     rightLabel="L"
@@ -397,7 +397,7 @@ export default function MainDashboard() {
                   />
                   
                   {/* 네 번째 뷰어 - Sagittal */}
-                  <MRIView
+                  <CTView
                     title={currentSequence ? `${t.sagittalView} (${currentSequence})` : t.sagittalView}
                     leftLabel="F"
                     rightLabel="B"

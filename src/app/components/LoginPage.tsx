@@ -81,7 +81,7 @@ export default function LoginPage() {
         />
       </div>
 
-      {/* MRI 격자 효과 */}
+      {/* CT 격자 효과 */}
       <div className="absolute inset-0 opacity-10">
         <div className="w-full h-full" style={{
           backgroundImage: `
@@ -108,7 +108,7 @@ export default function LoginPage() {
             </h2>
             <p className="text-gray-100 text-lg font-medium"
                style={{textShadow: '1px 1px 4px rgba(0,0,0,0.8)'}}>
-              뇌종양 진단 시스템
+              OncoType DX 유방암 분석 시스템
             </p>
             <div className="mt-4 h-1 w-20 bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-400 rounded-full mx-auto shadow-lg shadow-blue-400/50"></div>
           </div>
@@ -212,7 +212,7 @@ export default function LoginPage() {
       {/* 푸터 */}
       <div className="absolute bottom-6 text-center text-gray-300 text-sm z-10">
         <p style={{textShadow: '1px 1px 3px rgba(0,0,0,0.8)'}}>
-          © 2025 SILLA SYSTEM Brain Tumor Detection System
+          © 2025 SILLA SYSTEM OncoType DX Breast Cancer Analysis
         </p>
       </div>
 

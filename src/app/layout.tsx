@@ -16,9 +16,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "뇌종양 MRI 영상 분석 대시보드 | Brain Tumor Analysis",
-  description: "AI 기반 뇌종양 MRI 영상 분석 및 진단 대시보드 - Brain Tumor MRI Analysis Dashboard",
-  keywords: ["MRI", "뇌종양", "brain tumor", "의료 영상", "medical imaging", "AI 진단", "AI diagnosis"],
+  title: "OncoType DX 유방암 분석 대시보드 | OncoType DX Breast Cancer Analysis",
+  description: "AI 기반 OncoType DX 유방암 분석 및 진단 대시보드 - OncoType DX Breast Cancer Analysis Dashboard",
+  keywords: ["MRI", "유방암", "breast cancer", "oncotype dx", "의료 영상", "medical imaging", "AI 진단", "AI diagnosis"],
 };
 
 export default function RootLayout({

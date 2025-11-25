@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`MRI 파일 업로드 시작: ${file.name}, 환자: ${patientName}`);
+    console.log(`CT 파일 업로드 시작: ${file.name}, 환자: ${patientName}`);
 
     // 환자 생성 또는 조회
     const { data: patient, error: patientError } = await supabase
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: fileError.message }, { status: 500 });
     }
 
-    console.log(`MRI 파일 업로드 완료: 환자 ${finalPatient.id}`);
+    console.log(`CT 파일 업로드 완료: 환자 ${finalPatient.id}`);
     return NextResponse.json({
       success: true,
       patient: finalPatient,
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('MRI 업로드 실패:', error);
+    console.error('CT 업로드 실패:', error);
     return NextResponse.json(
       { error: '서버 오류가 발생했습니다.' },
       { status: 500 }

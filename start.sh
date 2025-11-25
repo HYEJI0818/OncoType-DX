@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🚀 Brain Tumor Analysis System 시작 중..."
+echo "🚀 OncoType DX 유방암 분석 시스템 시작 중..."
 echo "📁 프로젝트 디렉토리: $(pwd)"
 
 # 기존 프로세스 종료

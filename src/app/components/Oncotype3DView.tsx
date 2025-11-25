@@ -821,7 +821,7 @@ export default function Brain3DView({ imageUrl, niftiHeader, niftiImage, origina
 
       {/* 전체화면 모달 */}
       {showMPRViewer && (
-        <MPRViewer
+        <OncotypeMPRViewer
           imageUrl={imageUrl}
           niftiHeader={niftiHeader}
           niftiImage={niftiImage}

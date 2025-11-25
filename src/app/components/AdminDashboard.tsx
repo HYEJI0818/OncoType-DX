@@ -53,31 +53,31 @@ export default function AdminDashboard() {
   const [patientSearchTerm, setPatientSearchTerm] = useState('');
   const [selectedPatientDepartment, setSelectedPatientDepartment] = useState('');
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
-  const [showMRIModal, setShowMRIModal] = useState(false);
-  const [selectedPatientForMRI, setSelectedPatientForMRI] = useState<Patient | null>(null);
-  const [mriFiles, setMriFiles] = useState<FileList | null>(null);
+  const [showCTModal, setShowCTModal] = useState(false);
+  const [selectedPatientForCT, setSelectedPatientForCT] = useState<Patient | null>(null);
+  const [ctFiles, setCTFiles] = useState<FileList | null>(null);
   const [showEditPatientModal, setShowEditPatientModal] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
-  const [editMRIFiles, setEditMRIFiles] = useState<FileList | null>(null);
-  const [existingMRIFiles, setExistingMRIFiles] = useState<any[]>([]);
-  const [loadingMRIFiles, setLoadingMRIFiles] = useState(false);
+  const [editCTFiles, setEditCTFiles] = useState<FileList | null>(null);
+  const [existingCTFiles, setExistingCTFiles] = useState<any[]>([]);
+  const [loadingCTFiles, setLoadingCTFiles] = useState(false);
 
   // ESC 키로 모달 닫기
   useEffect(() => {
-    if (showCreateUserModal || showEditUserModal || showCreatePatientModal || showMRIModal || showEditPatientModal) {
+    if (showCreateUserModal || showEditUserModal || showCreatePatientModal || showCTModal || showEditPatientModal) {
       const handleEscKey = (event: KeyboardEvent) => {
         if (event.key === 'Escape') {
           setShowCreateUserModal(false);
           setShowEditUserModal(false);
           setShowCreatePatientModal(false);
-          setShowMRIModal(false);
+          setShowCTModal(false);
           setShowEditPatientModal(false);
           setEditingUser(null);
-          setSelectedPatientForMRI(null);
+          setSelectedPatientForCT(null);
           setEditingPatient(null);
-          setEditMRIFiles(null);
-          setExistingMRIFiles([]);
-          setLoadingMRIFiles(false);
+          setEditCTFiles(null);
+          setExistingCTFiles([]);
+          setLoadingCTFiles(false);
         }
       };
       
@@ -87,7 +87,7 @@ export default function AdminDashboard() {
         document.removeEventListener('keydown', handleEscKey);
       };
     }
-  }, [showCreateUserModal, showEditUserModal, showCreatePatientModal, showMRIModal, showEditPatientModal]);
+  }, [showCreateUserModal, showEditUserModal, showCreatePatientModal, showCTModal, showEditPatientModal]);
   const [newUser, setNewUser] = useState({
     email: '',
     password: '',
@@ -106,7 +106,7 @@ export default function AdminDashboard() {
     chartNumber: '',
     examDate: ''
   });
-  const [selectedMRIFiles, setSelectedMRIFiles] = useState<FileList | null>(null);
+  const [selectedCTFiles, setSelectedCTFiles] = useState<FileList | null>(null);
 
   useEffect(() => {
     setCurrentTime(new Date().toLocaleString());
@@ -447,21 +447,21 @@ export default function AdminDashboard() {
         return;
       }
 
-      // 2단계: MRI 파일 업로드 (파일이 선택된 경우)
-      if (selectedMRIFiles && selectedMRIFiles.length > 0) {
+      // 2단계: CT 파일 업로드 (파일이 선택된 경우)
+      if (selectedCTFiles && selectedCTFiles.length > 0) {
         const formData = new FormData();
-        Array.from(selectedMRIFiles).forEach((file) => {
+        Array.from(selectedCTFiles).forEach((file) => {
           formData.append('files', file);
         });
 
-        const uploadResponse = await fetch(`/api/users/upload-mri/${patientData.patient.id}`, {
+        const uploadResponse = await fetch(`/api/users/upload-ct/${patientData.patient.id}`, {
           method: 'POST',
           body: formData,
         });
 
         if (!uploadResponse.ok) {
-          console.error('MRI 파일 업로드 실패');
-          alert('환자는 등록되었지만 MRI 파일 업로드에 실패했습니다.');
+          console.error('CT 파일 업로드 실패');
+          alert('환자는 등록되었지만 CT 파일 업로드에 실패했습니다.');
         }
       }
 
@@ -477,7 +477,7 @@ export default function AdminDashboard() {
         chartNumber: '',
         examDate: ''
       });
-      setSelectedMRIFiles(null);
+      setSelectedCTFiles(null);
       loadPatients(); // 환자 목록 새로고침
       
     } catch (error) {
@@ -488,34 +488,34 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleOpenMRIModal = async (patient: Patient) => {
-    setSelectedPatientForMRI(patient);
-    setShowMRIModal(true);
-    await loadExistingMRIFiles(patient.id);
+  const handleOpenCTModal = async (patient: Patient) => {
+    setSelectedPatientForCT(patient);
+    setShowCTModal(true);
+    await loadExistingCTFiles(patient.id);
   };
 
-  const loadExistingMRIFiles = async (patientId: number) => {
+  const loadExistingCTFiles = async (patientId: number) => {
     try {
-      setLoadingMRIFiles(true);
+      setLoadingCTFiles(true);
       const response = await fetch(`/api/users/${patientId}/files`);
       
       if (response.ok) {
         const files = await response.json();
-        setExistingMRIFiles(files);
+        setExistingCTFiles(files);
       } else {
-        console.error('MRI 파일 목록 로드 실패');
-        setExistingMRIFiles([]);
+        console.error('CT 파일 목록 로드 실패');
+        setExistingCTFiles([]);
       }
     } catch (error) {
-      console.error('MRI 파일 목록 로드 오류:', error);
-      setExistingMRIFiles([]);
+      console.error('CT 파일 목록 로드 오류:', error);
+      setExistingCTFiles([]);
     } finally {
-      setLoadingMRIFiles(false);
+      setLoadingCTFiles(false);
     }
   };
 
-  const handleMRIUpload = async () => {
-    if (!selectedPatientForMRI || !mriFiles || mriFiles.length === 0) {
+  const handleCTUpload = async () => {
+    if (!selectedPatientForCT || !ctFiles || ctFiles.length === 0) {
       alert('파일을 선택해주세요.');
       return;
     }
@@ -523,27 +523,27 @@ export default function AdminDashboard() {
     try {
       setLoading(true);
       const formData = new FormData();
-      Array.from(mriFiles).forEach((file) => {
+      Array.from(ctFiles).forEach((file) => {
         formData.append('files', file);
       });
 
-      const response = await fetch(`/api/users/upload-mri/${selectedPatientForMRI.id}`, {
+      const response = await fetch(`/api/users/upload-ct/${selectedPatientForCT.id}`, {
         method: 'POST',
         body: formData,
       });
 
       if (response.ok) {
-        alert('MRI 파일이 성공적으로 업로드되었습니다.');
-        setMriFiles(null);
-        // MRI 파일 목록 새로고침
-        await loadExistingMRIFiles(selectedPatientForMRI.id);
+        alert('CT 파일이 성공적으로 업로드되었습니다.');
+        setCTFiles(null);
+        // CT 파일 목록 새로고침
+        await loadExistingCTFiles(selectedPatientForCT.id);
         // 필요시 환자 목록 새로고침
         loadPatients();
       } else {
-        alert('MRI 파일 업로드에 실패했습니다.');
+        alert('CT 파일 업로드에 실패했습니다.');
       }
     } catch (error) {
-      console.error('MRI 업로드 오류:', error);
+      console.error('CT 업로드 오류:', error);
       alert('서버 오류가 발생했습니다.');
     } finally {
       setLoading(false);
@@ -585,21 +585,21 @@ export default function AdminDashboard() {
       const data = await response.json();
 
       if (response.ok) {
-        // MRI 파일 업로드 (파일이 선택된 경우)
-        if (editMRIFiles && editMRIFiles.length > 0) {
+        // CT 파일 업로드 (파일이 선택된 경우)
+        if (editCTFiles && editCTFiles.length > 0) {
           const formData = new FormData();
-          Array.from(editMRIFiles).forEach((file) => {
+          Array.from(editCTFiles).forEach((file) => {
             formData.append('files', file);
           });
 
-          const uploadResponse = await fetch(`/api/users/upload-mri/${editingPatient.id}`, {
+          const uploadResponse = await fetch(`/api/users/upload-ct/${editingPatient.id}`, {
             method: 'POST',
             body: formData,
           });
 
           if (!uploadResponse.ok) {
-            console.error('MRI 파일 업로드 실패');
-            alert('환자 정보는 수정되었지만 MRI 파일 업로드에 실패했습니다.');
+            console.error('CT 파일 업로드 실패');
+            alert('환자 정보는 수정되었지만 CT 파일 업로드에 실패했습니다.');
           }
         }
 
@@ -612,7 +612,7 @@ export default function AdminDashboard() {
         alert('환자 정보가 성공적으로 수정되었습니다.');
         setShowEditPatientModal(false);
         setEditingPatient(null);
-        setEditMRIFiles(null);
+        setEditCTFiles(null);
         loadPatients(); // 환자 목록 새로고침
       } else {
         alert(data.error || '환자 정보 수정에 실패했습니다.');
@@ -899,7 +899,7 @@ export default function AdminDashboard() {
                         <th className="px-6 py-2 text-center text-base font-normal text-white uppercase tracking-wider border-r border-gray-500">진단</th>
                         <th className="px-6 py-2 text-center text-base font-normal text-white uppercase tracking-wider border-r border-gray-500">DESCRIPTION</th>
                         <th className="px-6 py-2 text-center text-base font-normal text-white uppercase tracking-wider border-r border-gray-500">최종 내원일</th>
-                        <th className="px-6 py-2 text-center text-base font-normal text-white uppercase tracking-wider border-r border-gray-500">MRI 파일</th>
+                        <th className="px-6 py-2 text-center text-base font-normal text-white uppercase tracking-wider border-r border-gray-500">CT 파일</th>
                         <th className="px-6 py-2 text-center text-base font-normal text-white uppercase tracking-wider">관리</th>
                       </tr>
                     </thead>
@@ -955,7 +955,7 @@ export default function AdminDashboard() {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center border-r border-gray-600 text-gray-300 text-sm">
                               <button 
-                                onClick={() => handleOpenMRIModal(patient)}
+                                onClick={() => handleOpenCTModal(patient)}
                                 disabled={loading}
                                 className="px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded text-xs transition-colors"
                               >
@@ -1588,7 +1588,7 @@ export default function AdminDashboard() {
                       chartNumber: '',
                       examDate: ''
                     });
-                    setSelectedMRIFiles(null);
+                    setSelectedCTFiles(null);
                   }}
                   className="text-gray-400 hover:text-white text-2xl leading-none"
                 >
@@ -1698,16 +1698,16 @@ export default function AdminDashboard() {
                 />
               </div>
 
-              {/* 네 번째 행: MRI 파일 업로드 */}
+              {/* 네 번째 행: CT 파일 업로드 */}
               <div>
                 <label className="block text-gray-300 text-sm font-medium mb-2">
-                  MRI 파일 업로드
+                  CT 파일 업로드
                 </label>
                 <div className="relative flex items-stretch">
                   <div className="flex-1 bg-gray-700 px-4 py-3 rounded-lg border border-gray-600 flex items-center">
-                    <span className={selectedMRIFiles && selectedMRIFiles.length > 0 ? "text-white" : "text-gray-400"}>
-                      {selectedMRIFiles && selectedMRIFiles.length > 0 
-                        ? `${selectedMRIFiles.length}개 파일 선택됨` 
+                    <span className={selectedCTFiles && selectedCTFiles.length > 0 ? "text-white" : "text-gray-400"}>
+                      {selectedCTFiles && selectedCTFiles.length > 0 
+                        ? `${selectedCTFiles.length}개 파일 선택됨` 
                         : '파일을 선택하세요'}
                     </span>
                   </div>
@@ -1718,16 +1718,16 @@ export default function AdminDashboard() {
                         type="file"
                         multiple
                         accept=".nii,.nii.gz,.dcm,.dicom"
-                        onChange={(e) => setSelectedMRIFiles(e.target.files)}
+                        onChange={(e) => setSelectedCTFiles(e.target.files)}
                         className="hidden"
                       />
                     </label>
                   </div>
                 </div>
-                {selectedMRIFiles && selectedMRIFiles.length > 0 && (
+                {selectedCTFiles && selectedCTFiles.length > 0 && (
                   <div className="mt-2">
                     <div className="max-h-20 overflow-y-auto">
-                      {Array.from(selectedMRIFiles).map((file, index) => (
+                      {Array.from(selectedCTFiles).map((file, index) => (
                         <div key={index} className="text-xs text-gray-500 truncate">
                           • {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
                         </div>
@@ -1765,7 +1765,7 @@ export default function AdminDashboard() {
                     chartNumber: '',
                     examDate: ''
                   });
-                  setSelectedMRIFiles(null);
+                  setSelectedCTFiles(null);
                 }}
                 disabled={loading}
                 className="bg-gray-600 hover:bg-gray-500 disabled:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
@@ -1784,21 +1784,21 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* MRI 파일 관리 모달 */}
-      {showMRIModal && selectedPatientForMRI && (
+      {/* CT 파일 관리 모달 */}
+      {showCTModal && selectedPatientForCT && (
         <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[9999] animate-in zoom-in-95 duration-200">
           <div className="bg-gray-800 rounded-lg p-6 w-[600px] max-w-[95vw] shadow-2xl border border-gray-600">
             <div className="flex items-center justify-between mb-4">
               <div className="flex-1"></div>
-              <h3 className="text-xl font-semibold text-white">MRI 파일 관리</h3>
+              <h3 className="text-xl font-semibold text-white">CT 파일 관리</h3>
               <div className="flex-1 flex justify-end">
                 <button
                   onClick={() => {
-                    setShowMRIModal(false);
-                    setSelectedPatientForMRI(null);
-                    setMriFiles(null);
-                    setExistingMRIFiles([]);
-                    setLoadingMRIFiles(false);
+                    setShowCTModal(false);
+                    setSelectedPatientForCT(null);
+                    setCTFiles(null);
+                    setExistingCTFiles([]);
+                    setLoadingCTFiles(false);
                   }}
                   className="text-gray-400 hover:text-white text-2xl leading-none"
                 >
@@ -1814,21 +1814,21 @@ export default function AdminDashboard() {
                   <span className="text-white font-bold text-lg">P</span>
                 </div>
                 <div className="ml-4">
-                  <div className="text-white font-medium text-lg">{selectedPatientForMRI.name || `P-${selectedPatientForMRI.id}`}</div>
-                  <div className="text-gray-400">{selectedPatientForMRI.age || 0}세, {selectedPatientForMRI.gender === 'M' ? '남성' : selectedPatientForMRI.gender === 'F' ? '여성' : '성별미상'}</div>
+                  <div className="text-white font-medium text-lg">{selectedPatientForCT.name || `P-${selectedPatientForCT.id}`}</div>
+                  <div className="text-gray-400">{selectedPatientForCT.age || 0}세, {selectedPatientForCT.gender === 'M' ? '남성' : selectedPatientForCT.gender === 'F' ? '여성' : '성별미상'}</div>
                 </div>
               </div>
             </div>
 
             {/* 파일 업로드 섹션 */}
             <div className="mb-6">
-              <h4 className="text-lg font-medium text-white mb-4">새 MRI 파일 업로드</h4>
+              <h4 className="text-lg font-medium text-white mb-4">새 CT 파일 업로드</h4>
               <div className="space-y-4">
                 <div className="relative flex items-stretch">
                   <div className="flex-1 bg-gray-700 px-4 py-3 rounded-lg border border-gray-600 flex items-center">
-                    <span className={mriFiles && mriFiles.length > 0 ? "text-white" : "text-gray-400"}>
-                      {mriFiles && mriFiles.length > 0 
-                        ? `${mriFiles.length}개 파일 선택됨` 
+                    <span className={ctFiles && ctFiles.length > 0 ? "text-white" : "text-gray-400"}>
+                      {ctFiles && ctFiles.length > 0 
+                        ? `${ctFiles.length}개 파일 선택됨` 
                         : '파일을 선택하세요'}
                     </span>
                   </div>
@@ -1839,16 +1839,16 @@ export default function AdminDashboard() {
                         type="file"
                         multiple
                         accept=".nii,.nii.gz,.dcm,.dicom"
-                        onChange={(e) => setMriFiles(e.target.files)}
+                        onChange={(e) => setCTFiles(e.target.files)}
                         className="hidden"
                       />
                     </label>
                   </div>
                 </div>
                 
-                {mriFiles && mriFiles.length > 0 && (
+                {ctFiles && ctFiles.length > 0 && (
                   <div className="max-h-32 overflow-y-auto bg-gray-700 rounded-lg p-3">
-                    {Array.from(mriFiles).map((file, index) => (
+                    {Array.from(ctFiles).map((file, index) => (
                       <div key={index} className="text-xs text-gray-300 py-1">
                         • {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
                       </div>
@@ -1857,8 +1857,8 @@ export default function AdminDashboard() {
                 )}
 
                 <button
-                  onClick={handleMRIUpload}
-                  disabled={loading || !mriFiles || mriFiles.length === 0}
+                  onClick={handleCTUpload}
+                  disabled={loading || !ctFiles || ctFiles.length === 0}
                   className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors font-medium"
                 >
                   {loading ? '업로드 중...' : '파일 업로드'}
@@ -1868,19 +1868,19 @@ export default function AdminDashboard() {
 
             {/* 기존 파일 목록 섹션 */}
             <div className="mb-6">
-              <h4 className="text-lg font-medium text-white mb-4">기존 MRI 파일 목록</h4>
+              <h4 className="text-lg font-medium text-white mb-4">기존 CT 파일 목록</h4>
               <div className="bg-gray-700 rounded-lg p-4 max-h-48 overflow-y-auto">
-                {loadingMRIFiles ? (
+                {loadingCTFiles ? (
                   <div className="text-gray-400 text-sm text-center py-4">
                     파일 목록을 불러오는 중...
                   </div>
-                ) : existingMRIFiles.length === 0 ? (
+                ) : existingCTFiles.length === 0 ? (
                   <div className="text-gray-400 text-sm text-center py-4">
-                    업로드된 MRI 파일이 없습니다.
+                    업로드된 CT 파일이 없습니다.
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {existingMRIFiles.map((file, index) => (
+                    {existingCTFiles.map((file, index) => (
                       <div key={index} className="flex items-center justify-between p-3 bg-gray-600 rounded-lg">
                         <div className="flex-1">
                           <div className="text-white text-sm font-medium truncate">
@@ -1896,7 +1896,7 @@ export default function AdminDashboard() {
                             onClick={() => {
                               const link = document.createElement('a');
                               link.href = file.public_url;
-                              link.download = file.original_filename || file.file_name || 'mri_file';
+                              link.download = file.original_filename || file.file_name || 'ct_file';
                               link.click();
                             }}
                             className="text-green-400 hover:text-green-300 text-xs px-2 py-1 bg-green-600/20 rounded"
@@ -1914,11 +1914,11 @@ export default function AdminDashboard() {
             <div className="flex justify-end">
               <button
                 onClick={() => {
-                  setShowMRIModal(false);
-                  setSelectedPatientForMRI(null);
-                  setMriFiles(null);
-                  setExistingMRIFiles([]);
-                  setLoadingMRIFiles(false);
+                  setShowCTModal(false);
+                  setSelectedPatientForCT(null);
+                  setCTFiles(null);
+                  setExistingCTFiles([]);
+                  setLoadingCTFiles(false);
                 }}
                 className="bg-gray-600 hover:bg-gray-500 text-white px-6 py-2 rounded-lg transition-colors"
               >
@@ -1943,7 +1943,7 @@ export default function AdminDashboard() {
                   onClick={() => {
                     setShowEditPatientModal(false);
                     setEditingPatient(null);
-                    setEditMRIFiles(null);
+                    setEditCTFiles(null);
                   }}
                   className="text-gray-400 hover:text-white text-2xl leading-none"
                 >
@@ -2053,16 +2053,16 @@ export default function AdminDashboard() {
                 />
               </div>
 
-              {/* 네 번째 행: MRI 파일 업로드 */}
+              {/* 네 번째 행: CT 파일 업로드 */}
               <div>
                 <label className="block text-gray-300 text-sm font-medium mb-2">
-                  MRI 파일 업로드
+                  CT 파일 업로드
                 </label>
                 <div className="relative flex items-stretch">
                   <div className="flex-1 bg-gray-700 px-4 py-3 rounded-lg border border-gray-600 flex items-center">
-                    <span className={editMRIFiles && editMRIFiles.length > 0 ? "text-white" : "text-gray-400"}>
-                      {editMRIFiles && editMRIFiles.length > 0 
-                        ? `${editMRIFiles.length}개 파일 선택됨` 
+                    <span className={editCTFiles && editCTFiles.length > 0 ? "text-white" : "text-gray-400"}>
+                      {editCTFiles && editCTFiles.length > 0 
+                        ? `${editCTFiles.length}개 파일 선택됨` 
                         : '파일을 선택하세요'}
                     </span>
                   </div>
@@ -2073,16 +2073,16 @@ export default function AdminDashboard() {
                         type="file"
                         multiple
                         accept=".nii,.nii.gz,.dcm,.dicom"
-                        onChange={(e) => setEditMRIFiles(e.target.files)}
+                        onChange={(e) => setEditCTFiles(e.target.files)}
                         className="hidden"
                       />
                     </label>
                   </div>
                 </div>
-                {editMRIFiles && editMRIFiles.length > 0 && (
+                {editCTFiles && editCTFiles.length > 0 && (
                   <div className="mt-2">
                     <div className="max-h-20 overflow-y-auto">
-                      {Array.from(editMRIFiles).map((file, index) => (
+                      {Array.from(editCTFiles).map((file, index) => (
                         <div key={index} className="text-xs text-gray-500 truncate">
                           • {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
                         </div>
@@ -2111,7 +2111,7 @@ export default function AdminDashboard() {
                 onClick={() => {
                   setShowEditPatientModal(false);
                   setEditingPatient(null);
-                  setEditMRIFiles(null);
+                  setEditCTFiles(null);
                 }}
                 disabled={loading}
                 className="bg-gray-600 hover:bg-gray-500 disabled:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
