@@ -1,0 +1,174 @@
+@import "tailwindcss";
+
+:root {
+  --background: #111827;
+  --foreground: #f9fafb;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* 🎯 배포 환경 드로잉 문제 해결 */
+
+/* 1. 캔버스 pointer-events 보장 */
+canvas#nv-canvas, 
+canvas[data-niivue], 
+canvas {
+  pointer-events: auto !important;
+  z-index: 10 !important;
+  touch-action: none !important; /* 터치 제스처를 캔버스로 */
+}
+
+/* 2. 오버레이 요소들 pointer-events 비활성화 */
+.overlay, 
+.panel, 
+.glass,
+.absolute.inset-0,
+.fixed.inset-0 {
+  pointer-events: none !important;
+}
+
+/* 3. 클릭 필요한 버튼들만 pointer-events 복원 */
+button, 
+input, 
+select, 
+.clickable {
+  pointer-events: auto !important;
+}
+
+/* 4. 캔버스 컨테이너 최소 크기 보장 */
+.canvas-container {
+  min-width: 400px !important;
+  min-height: 300px !important;
+}
+
+/* 스크롤바 스타일링 */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #374151;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #6b7280;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* NilVue 스타일 슬라이더 */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* 슬라이더 트랙 */
+input[type="range"]::-webkit-slider-track {
+  background: #374151;
+  height: 8px;
+  border-radius: 4px;
+  border: 1px solid #4b5563;
+}
+
+input[type="range"]::-moz-range-track {
+  background: #374151;
+  height: 8px;
+  border-radius: 4px;
+  border: 1px solid #4b5563;
+}
+
+/* 슬라이더 thumb */
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #3b82f6;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+input[type="range"]::-moz-range-thumb {
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #3b82f6;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+/* 슬라이더 thumb 호버 효과 */
+input[type="range"]::-webkit-slider-thumb:hover {
+  background: #f0f9ff;
+  border-color: #2563eb;
+  transform: scale(1.1);
+}
+
+input[type="range"]::-moz-range-thumb:hover {
+  background: #f0f9ff;
+  border-color: #2563eb;
+  transform: scale(1.1);
+}
+
+/* 오버레이 슬라이더 (오렌지 색상) */
+.overlay-slider::-webkit-slider-thumb {
+  border-color: #f97316;
+}
+
+.overlay-slider::-moz-range-thumb {
+  border-color: #f97316;
+}
+
+.overlay-slider::-webkit-slider-thumb:hover {
+  border-color: #ea580c;
+}
+
+.overlay-slider::-moz-range-thumb:hover {
+  border-color: #ea580c;
+}
+
+/* Brain3D 뷰어 슬라이더 스타일 */
+.brain3d-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #3b82f6;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.brain3d-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #3b82f6;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}

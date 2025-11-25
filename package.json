@@ -1,0 +1,36 @@
+{
+  "name": "frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@google-cloud/translate": "^9.2.0",
+    "@niivue/niivue": "^0.62.1",
+    "@supabase/supabase-js": "^2.54.0",
+    "@types/three": "^0.179.0",
+    "@types/uuid": "^10.0.0",
+    "html2canvas": "^1.4.1",
+    "next": "15.4.6",
+    "nifti-reader-js": "^0.8.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "three": "^0.179.1",
+    "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.4.6",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

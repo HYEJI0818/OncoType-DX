@@ -1,0 +1,159 @@
+====================================================================
+🧠 보라색 슬라이스 평면 기능 구현 코드 (NiiVue + React)
+====================================================================
+
+📋 개요:
+- Brain3DView의 "3D 단면" 기능을 MPRViewer "작업중" 모드로 이식
+- 3D 뇌 볼륨 + 보라색 클리핑 평면 + 마우스 휠 인터랙션
+- setClipPlane() 방식 사용 (crosshairPos 방식 아님)
+
+====================================================================
+🔧 1. 상태 관리 (React useState)
+====================================================================
+
+const [isWorkingMode, setIsWorkingMode] = useState(false); // 작업중 모드 상태
+const [workingSlicePos, setWorkingSlicePos] = useState(0.5); // 작업중 모드 슬라이스 위치 (0.0~1.0)
+
+====================================================================
+🎯 2. 보라색 슬라이스 평면 활성화 함수
+====================================================================
+
+// 작업중 - 3D + 보라색 슬라이스 평면 기능 (Brain3DView 방식)
+const setView3DSliceWithClipping = () => {
+  setIs3DSliceMode(false); // 다른 모드 해제
+  setIsWorkingMode(true); // 작업중 모드 활성화
+  
+  if (nvRef.current) {
+    nvRef.current.setSliceType(4); // 3D 렌더 모드 (진짜 3D)
+    
+    // 적절한 3D 시점 설정 (약간 기울어진 각도로 단면이 잘 보이도록)
+    nvRef.current.setRenderAzimuthElevation(45, 15);
+    
+    // Brain3DView와 동일한 방식으로 클리핑 평면 설정
+    setTimeout(() => {
+      if (nvRef.current) {
+        // Coronal 방향으로 중간 지점에서 클리핑 (Brain3DView와 동일)
+        const clipPlane = [0, 1, 0, 0]; // Y축으로 중간 지점에서 자르기
+        nvRef.current.setClipPlane(clipPlane);
+        nvRef.current.drawScene();
+      }
+    }, 100);
+    
+    nvRef.current.drawScene();
+  }
+};
+
+====================================================================
+🖱️ 3. 마우스 휠 인터랙션 (onWheel 이벤트)
+====================================================================
+
+<canvas
+  ref={canvasRef}
+  className="w-full h-full"
+  onWheel={(e) => {
+    // 작업중 모드일 때만 슬라이스 조작 가능 (Brain3DView 방식)
+    if (isWorkingMode && nvRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const delta = e.deltaY > 0 ? 0.05 : -0.05;
+      const newPos = Math.max(0.01, Math.min(0.99, workingSlicePos + delta));
+      setWorkingSlicePos(newPos);
+      
+      // Brain3DView와 동일한 클리핑 방식 (Coronal 방향)
+      const clipPlane = [0, 1, 0, newPos - 0.5]; // Y축 클리핑 (앞뒤로 자르기)
+      nvRef.current.setClipPlane(clipPlane);
+      nvRef.current.drawScene();
+      
+      console.log(`🔧 작업중 모드 클리핑 이동: ${newPos.toFixed(2)} (${e.deltaY > 0 ? '앞→뒤' : '뒤→앞'})`);
+    }
+  }}
+/>
+
+====================================================================
+🎨 4. UI 버튼 (작업중 모드 활성화)
+====================================================================
+
+<button
+  onClick={setView3DSliceWithClipping}
+  className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 font-bold animate-pulse"
+>
+  🔧 작업중
+</button>
+
+====================================================================
+💡 5. 상태 표시 UI (하단 정보)
+====================================================================
+
+{isWorkingMode ? (
+  <div className="flex items-center justify-between">
+    <span className="text-red-400 animate-pulse">
+      🔧 작업중 모드: 마우스 휠로 보라색 슬라이스 평면 이동 (이마↔뒤통수) | 드래그로 3D 회전
+    </span>
+    <div className="flex items-center gap-2">
+      <span className="text-red-300">슬라이스 위치:</span>
+      <span className="text-red-200 font-mono bg-red-900 px-2 py-0.5 rounded">
+        {(workingSlicePos * 100).toFixed(0)}%
+      </span>
+    </div>
+  </div>
+) : (
+  <span>💡 조작법: 마우스 드래그(회전/이동) | 휠(확대/축소) | 십자선 클릭(슬라이스 이동)</span>
+)}
+
+====================================================================
+🔑 6. 핵심 포인트 & 주의사항
+====================================================================
+
+✅ 성공 요인:
+1. setClipPlane() 사용 (crosshairPos 방식 아님)
+2. Brain3DView의 clipDepth 방식 적용: newPos - 0.5
+3. setSliceType(4) 3D 렌더 모드
+4. setTimeout으로 초기 클리핑 평면 설정 지연
+5. e.preventDefault() + e.stopPropagation()으로 기본 동작 차단
+
+❌ 피해야 할 것:
+1. multiplanarShowRender 복잡한 설정 (불필요)
+2. scene.crosshairPos 직접 조작 (클리핑에는 부적합)
+3. setSliceMM() 사용 (타입 오류 발생)
+4. scene.renderBitmap 조작 (존재하지 않는 속성)
+
+====================================================================
+🧠 7. NiiVue 클리핑 평면 이해
+====================================================================
+
+clipPlane = [x, y, z, d] 형식:
+- [0, 1, 0, 0]: Y축 중간에서 클리핑 (Coronal 방향)
+- [1, 0, 0, 0]: X축 중간에서 클리핑 (Sagittal 방향)  
+- [0, 0, 1, 0]: Z축 중간에서 클리핑 (Axial 방향)
+
+d 값 조절:
+- d = 0: 중간 지점
+- d = -0.5 ~ 0.5: 클리핑 위치 조절
+- newPos - 0.5: 0~1 범위를 -0.5~0.5로 변환
+
+====================================================================
+📁 8. 적용된 파일
+====================================================================
+
+파일: frontend/src/app/components/MPRViewer.tsx
+- 라인 47-48: 상태 변수 추가
+- 라인 636-658: setView3DSliceWithClipping 함수
+- 라인 690-695: 작업중 버튼
+- 라인 987-1004: onWheel 이벤트 핸들러
+- 라인 1015-1025: 상태 표시 UI
+
+====================================================================
+🚀 9. 사용법
+====================================================================
+
+1. MPRViewer 전체화면 모드 진입
+2. "🔧 작업중" 버튼 클릭
+3. 3D 뇌 볼륨 + 보라색 클리핑 평면 표시
+4. 마우스 휠로 평면 이동 (이마↔뒤통수)
+5. 드래그로 3D 회전 가능
+6. 하단에 실시간 슬라이스 위치 표시
+
+====================================================================
+✨ 완성! 언제든지 이 코드를 참고해서 다른 프로젝트에도 적용 가능
+====================================================================
