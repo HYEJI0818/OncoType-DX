@@ -36,32 +36,32 @@ export default function ImageList({ selectedIndex = 0, onImageSelect, uploadedIm
   // const [slice, setSlice] = useState(54);
   // const [windowWidth, setWindowWidth] = useState(138);
   // const [windowLevel, setWindowLevel] = useState(114);
-  // CT 시퀀스별 이미지 - 모두 Axial View로 통일 (슬라이스 100번 사용)
+  // MRI 시퀀스별 이미지 - 모두 Axial View로 통일 (슬라이스 100번 사용)
   const ctSequences = [
     { 
       id: 1, 
-      src: '/ct/T1N/axial/100.png', 
+      src: '/mri/T1N/axial/100.png', 
       alt: 'T1 Axial View',
       label: 'T1',
       description: '해부학적 구조 (물 어둡고, 지방 밝음)'
     },
     { 
       id: 2, 
-      src: '/ct/T1C/axial/100.png', 
+      src: '/mri/T1C/axial/100.png', 
       alt: 'T1CE Axial View',
       label: 'T1CE',
       description: '조영제 주입 후 병변 강조'
     },
     { 
       id: 3, 
-      src: '/ct/T2/axial/100.png', 
+      src: '/mri/T2/axial/100.png', 
       alt: 'T2 Axial View',
       label: 'T2',
       description: '물 많은 부위 밝게 (부종 잘 보임)'
     },
     { 
       id: 4, 
-      src: '/ct/FLAIR/axial/100.png', 
+      src: '/mri/FLAIR/axial/100.png', 
       alt: 'FLAIR Axial View',
       label: 'FLAIR',
       description: '뇌실 주변 병변 선명하게'
@@ -91,12 +91,12 @@ export default function ImageList({ selectedIndex = 0, onImageSelect, uploadedIm
               onClick={() => onImageSelect?.(index)}
               title={`${sequence.label}: ${sequence.description}`}
             >
-              {/* CT 시퀀스 라벨 */}
+              {/* MRI 시퀀스 라벨 */}
               <div className="absolute top-0 left-0 bg-black/70 text-white text-[8px] sm:text-[10px] px-1 py-0.5 rounded-br-md font-medium z-10">
                 {sequence.label}
               </div>
               
-              {/* 실제 CT 이미지 */}
+              {/* 실제 MRI 이미지 */}
               <Image
                 src={sequence.src}
                 alt={sequence.alt}
@@ -144,12 +144,12 @@ export default function ImageList({ selectedIndex = 0, onImageSelect, uploadedIm
               onClick={() => onImageSelect?.(index)}
               title={`${sequence.label}: ${sequence.description}`}
             >
-              {/* CT 시퀀스 라벨 */}
+              {/* MRI 시퀀스 라벨 */}
               <div className="absolute top-0 left-0 bg-black/70 text-white text-[10px] px-1.5 py-1 rounded-br-md font-medium z-10">
                 {sequence.label}
               </div>
               
-              {/* 실제 CT 이미지 */}
+              {/* 실제 MRI 이미지 */}
               <Image
                 src={sequence.src}
                 alt={sequence.alt}

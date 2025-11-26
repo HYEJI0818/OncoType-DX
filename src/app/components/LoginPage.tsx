@@ -81,7 +81,7 @@ export default function LoginPage() {
         />
       </div>
 
-      {/* CT 격자 효과 */}
+      {/* MRI 격자 효과 */}
       <div className="absolute inset-0 opacity-10">
         <div className="w-full h-full" style={{
           backgroundImage: `

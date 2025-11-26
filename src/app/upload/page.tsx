@@ -12,11 +12,18 @@ interface UploadedFile {
   id: string;
 }
 
-interface FileSlots {
-  T1: UploadedFile | null;
-  T1CE: UploadedFile | null;
-  T2: UploadedFile | null;
-  FLAIR: UploadedFile | null;
+interface PatientInfo {
+  name: string;
+  gender: string;
+  birthDate: string;
+  scanDate: string;
+}
+
+interface AdditionalInfo {
+  weight: string;
+  height: string;
+  medicalHistory: string;
+  notes: string;
 }
 
 export default function UploadPage() {
@@ -25,14 +32,27 @@ export default function UploadPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const [fileSlots, setFileSlots] = useState<FileSlots>({
-    T1: null,
-    T1CE: null,
-    T2: null,
-    FLAIR: null
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+
+  const [patientInfo, setPatientInfo] = useState<PatientInfo>({
+    name: '',
+    gender: '',
+    birthDate: '',
+    scanDate: ''
   });
 
+  const [additionalInfo, setAdditionalInfo] = useState<AdditionalInfo>({
+    weight: '',
+    height: '',
+    medicalHistory: '',
+    notes: ''
+  });
+
+  const [isEditingAdditionalInfo, setIsEditingAdditionalInfo] = useState(true);
+
   const [isUploading, setIsUploading] = useState(false);
+  const [processingStep, setProcessingStep] = useState(0);
+  const [processingProgress, setProcessingProgress] = useState(0);
 
   // 파일 업로드 핸들러
   const handleFileUpload = () => {
@@ -40,222 +60,141 @@ export default function UploadPage() {
   };
 
 
-  // 파일명에서 CT 시퀀스 타입 자동 감지
-  const detectSequenceType = (fileName: string): keyof FileSlots | null => {
-    const lowerName = fileName.toLowerCase();
-    
-    // T1 (t1, t1n)
-    if (lowerName.includes('t1n') || (lowerName.includes('t1') && !lowerName.includes('t1c'))) {
-      return 'T1';
-    }
-    
-    // T1CE (t1c, t1ce)
-    if (lowerName.includes('t1c') || lowerName.includes('t1ce')) {
-      return 'T1CE';
-    }
-    
-    // T2 (t2, t2w)
-    if (lowerName.includes('t2') && !lowerName.includes('t2f')) {
-      return 'T2';
-    }
-    
-    // FLAIR (t2f, flair)
-    if (lowerName.includes('t2f') || lowerName.includes('flair')) {
-      return 'FLAIR';
-    }
-    
-    return null;
-  };
 
   // 파일 선택 핸들러
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
-    // nii.gz 파일만 필터링
-    const niiFiles = Array.from(files).filter(file => 
-      file.name.toLowerCase().endsWith('.nii.gz') || 
-      file.name.toLowerCase().endsWith('.nii')
-    );
+    // 지원되는 파일 형식 필터링
+    const supportedFiles = Array.from(files).filter(file => {
+      const fileName = file.name.toLowerCase();
+      return fileName.endsWith('.dcm') || 
+             fileName.endsWith('.dicom') || 
+             fileName.endsWith('.nii') || 
+             fileName.endsWith('.nii.gz');
+    });
 
-    if (niiFiles.length === 0) {
-      alert('nii.gz 파일을 선택해주세요.');
+    if (supportedFiles.length === 0) {
+      alert('지원되는 파일 형식을 선택해주세요. (DCM, NII, NII.gz)');
       return;
     }
 
-    // 파일명 기반 자동 배치 시도
-    const newFileSlots = { ...fileSlots };
-    const successfullyPlaced: string[] = [];
-    const failedFiles: string[] = [];
-
-    niiFiles.forEach(file => {
-      const detectedType = detectSequenceType(file.name);
-      
-      if (detectedType && !newFileSlots[detectedType]) {
-        // 해당 슬롯이 비어있으면 자동 배치
-        newFileSlots[detectedType] = {
-          file,
-          id: `${Date.now()}-${detectedType}`
-        };
-        successfullyPlaced.push(`${file.name} → ${detectedType}`);
-        console.log(`자동 배치: ${file.name} -> ${detectedType}`);
-      } else {
-        // 자동 배치 실패
-        if (detectedType && newFileSlots[detectedType]) {
-          failedFiles.push(`${file.name} (${detectedType} 슬롯이 이미 사용 중)`);
-        } else {
-          failedFiles.push(`${file.name} (파일명에서 시퀀스 타입을 인식할 수 없음)`);
-        }
-      }
-    });
-
-    // 상태 업데이트
-    setFileSlots(newFileSlots);
-
-    // 결과 알림
-    if (successfullyPlaced.length > 0) {
-      console.log('자동 배치 완료:', successfullyPlaced);
-    }
+    // 파일 크기 체크 (500MB)
+    const maxSize = 500 * 1024 * 1024; // 500MB
+    const oversizedFiles = supportedFiles.filter(file => file.size > maxSize);
     
-    if (failedFiles.length > 0) {
-      alert(`다음 파일들은 자동 배치되지 않았습니다:\n\n${failedFiles.join('\n')}\n\n파일명에 t1, t1ce, t2, flair 등의 키워드가 포함되어야 자동 인식됩니다.`);
+    if (oversizedFiles.length > 0) {
+      alert(`다음 파일들이 최대 크기(500MB)를 초과합니다:\n${oversizedFiles.map(f => f.name).join('\n')}`);
+      return;
     }
-  };
 
-  // 특정 슬롯에 파일 할당
-  const assignFileToSlot = (file: File, slotKey: keyof FileSlots) => {
-    setFileSlots(prev => ({
-      ...prev,
-      [slotKey]: {
-        file,
-        id: `${Date.now()}-${slotKey}`
-      }
-    }));
+    setUploadedFiles(supportedFiles);
   };
 
   // 개별 파일 제거 핸들러
-  const removeFile = (slotKey: keyof FileSlots) => {
-    setFileSlots(prev => ({
-      ...prev,
-      [slotKey]: null
-    }));
+  const removeFile = (index: number) => {
+    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   // 모든 파일 초기화
   const resetFiles = () => {
-    setFileSlots({
-      T1: null,
-      T1CE: null,
-      T2: null,
-      FLAIR: null
+    setUploadedFiles([]);
+  };
+
+  // 진행률 시뮬레이션 함수
+  const simulateProgress = (step: number, duration: number) => {
+    return new Promise<void>((resolve) => {
+      setProcessingStep(step);
+      setProcessingProgress(0);
+      
+      const interval = setInterval(() => {
+        setProcessingProgress(prev => {
+          if (prev >= 100) {
+            clearInterval(interval);
+            resolve();
+            return 100;
+          }
+          return prev + (100 / (duration / 100)); // 100ms마다 업데이트
+        });
+      }, 100);
     });
   };
 
-  // 분석 시작 (Flask API 사용)
+  // 분석 시작 (시뮬레이션)
   const startAnalysis = async () => {
-    const uploadedFiles = Object.values(fileSlots).filter(slot => slot !== null);
-    
     if (uploadedFiles.length === 0) {
       alert('최소 1개의 파일을 업로드해주세요.');
       return;
     }
 
     setIsUploading(true);
+    setProcessingStep(0);
+    setProcessingProgress(0);
     
     try {
-      // 1. Flask API에서 새 세션 생성
-      console.log('🚀 새 세션 생성 중...');
-      const sessionResponse = await fetch('http://localhost:5001/api/session/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      // 1단계: 파일 전처리
+      console.log('🚀 1단계: 파일 전처리 시작...');
+      await simulateProgress(1, 3000); // 3초
+      console.log('✅ 1단계 완료: N4 Bias Correction + ComBat 정규화');
 
-      if (!sessionResponse.ok) {
-        const errorText = await sessionResponse.text();
-        throw new Error(`세션 생성에 실패했습니다. (${sessionResponse.status}): ${errorText}`);
-      }
+      // 2단계: 종양 세그멘테이션
+      console.log('🔍 2단계: 종양 세그멘테이션 시작...');
+      await simulateProgress(2, 4000); // 4초
+      console.log('✅ 2단계 완료: U-Net 모델로 종양 영역 자동 추출');
 
-      const sessionData = await sessionResponse.json();
-      const sessionId = sessionData.session_id;
-      console.log('✅ 세션 생성 완료:', sessionId);
+      // 3단계: AI 추론
+      console.log('🧠 3단계: AI 추론 시작...');
+      await simulateProgress(3, 5000); // 5초
+      console.log('✅ 3단계 완료: OncoType DX 점수 예측');
 
-      // 2. Flask API에 파일들 업로드
-      console.log('📤 파일 업로드 시작...');
-      const formData = new FormData();
-      
-      Object.entries(fileSlots)
-        .filter(([_, slot]) => slot !== null)
-        .forEach(([sequenceType, slot]) => {
-          formData.append(sequenceType, slot!.file);
-          console.log(`${sequenceType} 파일 추가:`, slot!.file.name);
-        });
+      // 4단계: 결과 생성 및 XAI 분석
+      console.log('📊 4단계: 결과 생성 및 XAI 분석 시작...');
+      await simulateProgress(4, 3000); // 3초
+      console.log('✅ 4단계 완료: Grad-CAM 히트맵 + 피처 기여도 분석');
 
-      const uploadResponse = await fetch(`http://localhost:5001/api/session/${sessionId}/upload`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!uploadResponse.ok) {
-        const errorText = await uploadResponse.text();
-        throw new Error(`파일 업로드에 실패했습니다. (${uploadResponse.status}): ${errorText}`);
-      }
-
-      const uploadData = await uploadResponse.json();
-      console.log('✅ 파일 업로드 완료:', uploadData);
-
-      // 3. AI 분석 시작
-      console.log('🧠 AI 분석 시작...');
-      const analysisResponse = await fetch(`http://localhost:5001/api/session/${sessionId}/analyze`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!analysisResponse.ok) {
-        const errorText = await analysisResponse.text();
-        throw new Error(`AI 분석 시작에 실패했습니다. (${analysisResponse.status}): ${errorText}`);
-      }
-
-      const analysisData = await analysisResponse.json();
-      console.log('✅ AI 분석 완료:', analysisData);
-
-      // 4. IndexedDB에 파일들 저장 (뷰어용)
+      // IndexedDB에 파일들 저장 (뷰어용)
       console.log('💾 IndexedDB에 파일 저장 중...');
       const savedFiles: string[] = [];
       
-      for (const [sequenceType, slot] of Object.entries(fileSlots)) {
-        if (slot !== null) {
-          try {
-            await fileStorage.saveFile(sequenceType, slot.file);
-            savedFiles.push(sequenceType);
-            console.log(`✅ ${sequenceType} 파일 IndexedDB 저장 완료`);
-          } catch (error) {
-            console.error(`❌ ${sequenceType} 파일 IndexedDB 저장 실패:`, error);
-          }
+      for (let i = 0; i < uploadedFiles.length; i++) {
+        const file = uploadedFiles[i];
+        try {
+          await fileStorage.saveFile(`file_${i}`, file);
+          savedFiles.push(file.name);
+          console.log(`✅ ${file.name} IndexedDB 저장 완료`);
+        } catch (error) {
+          console.error(`❌ ${file.name} IndexedDB 저장 실패:`, error);
         }
       }
       
       console.log('💾 IndexedDB 저장 완료:', savedFiles);
 
-      // 5. 세션 ID를 localStorage에 저장하고 분석 페이지로 이동
-      localStorage.setItem('currentSessionId', sessionId);
-      localStorage.setItem('hasUploadedFiles', 'true');
-      console.log('🎯 분석 페이지로 이동:', sessionId);
-      
-      router.push('/analysis');
+      // 완료 표시
+      setProcessingStep(5);
+      setProcessingProgress(100);
+
+      // 잠시 대기 후 분석 페이지로 이동
+      setTimeout(() => {
+        const mockSessionId = `session_${Date.now()}`;
+        localStorage.setItem('currentSessionId', mockSessionId);
+        localStorage.setItem('hasUploadedFiles', 'true');
+        console.log('🎯 분석 페이지로 이동:', mockSessionId);
+        router.push('/analysis');
+      }, 1000);
+
     } catch (error) {
-      console.error('❌ 업로드/분석 실패:', error);
-      alert(`업로드에 실패했습니다: ${error}`);
+      console.error('❌ 분석 실패:', error);
+      alert(`분석에 실패했습니다: ${error}`);
+      setProcessingStep(0);
+      setProcessingProgress(0);
     } finally {
       setIsUploading(false);
     }
   };
 
   // 업로드된 파일 개수 확인
-  const uploadedCount = Object.values(fileSlots).filter(slot => slot !== null).length;
+  const uploadedCount = uploadedFiles.length;
 
   return (
     <div className="min-h-screen bg-gray-900 p-2 sm:p-4">
@@ -267,11 +206,11 @@ export default function UploadPage() {
         <div className="w-full">
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 min-h-[800px]">
             {/* 왼쪽: 파일 업로드 영역 (더 넓게) */}
-            <div className="xl:col-span-2 flex flex-col">
-              {/* 파일 업로드 박스 - 오른쪽 전체 높이와 동일 */}
+            <div className="xl:col-span-2 flex flex-col space-y-6">
+              {/* 파일 업로드 박스 */}
               <div 
                 onClick={handleFileUpload}
-                className="relative border-2 border-dashed border-gray-600 hover:border-blue-500 rounded-lg p-16 text-center cursor-pointer transition-colors duration-200 bg-gray-800 hover:bg-gray-750 flex items-center justify-center h-full"
+                className="relative border-2 border-dashed border-gray-600 hover:border-blue-500 rounded-lg p-16 text-center cursor-pointer transition-colors duration-200 bg-gray-800 hover:bg-gray-750 flex items-center justify-center"
               >
                 <div className="space-y-6">
                   {/* 파일 아이콘 - 더 크게 */}
@@ -289,12 +228,12 @@ export default function UploadPage() {
                   </div>
                   
                   <div className="text-gray-400">
-                    <p className="text-xl font-medium">NIfTI CT 파일을 업로드하세요</p>
+                    <p className="text-xl font-medium">MRI 파일을 업로드 하세요.</p>
                     <p className="text-base mt-3">
-                      .nii.gz 또는 .nii CT 파일을 최대 4개까지 선택할 수 있습니다
+                      지원 형식: DCM, NII, NII.gz
                     </p>
                     <p className="text-sm mt-2 text-gray-500">
-                      T1, T1CE, T2, FLAIR 순서로 자동 배치됩니다
+                      최대 크기: 500MB
                     </p>
                   </div>
                 </div>
@@ -305,82 +244,180 @@ export default function UploadPage() {
                 ref={fileInputRef}
                 type="file"
                 multiple
-                accept=".nii,.nii.gz"
+                accept=".nii,.nii.gz,.dcm,.dicom"
                 onChange={handleFileSelect}
                 className="hidden"
               />
 
-            </div>
-
-            {/* 오른쪽: 파일 슬롯 */}
-            <div className="xl:col-span-1 flex flex-col h-full">
-              {/* 업로드 상태 */}
-              {uploadedCount > 0 && (
-                <div className="bg-gray-800 rounded-lg p-6 mb-6">
-                  <div className="flex items-center justify-between">
-                    <span className="text-green-400 font-medium text-lg">
-                      {uploadedCount}개 파일 업로드됨
-                    </span>
+              {/* 업로드된 파일 목록 */}
+              {uploadedFiles.length > 0 && (
+                <div className="bg-gray-800 rounded-lg p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-medium text-white">업로드된 파일 ({uploadedFiles.length}개)</h3>
                     <button
                       onClick={resetFiles}
-                      className="text-red-400 hover:text-red-300 text-base px-4 py-2 rounded-lg hover:bg-red-900/20 transition-colors duration-200"
+                      className="text-red-400 hover:text-red-300 text-sm px-3 py-1 rounded-lg hover:bg-red-900/20 transition-colors duration-200"
                     >
-                      모두 초기화
+                      모두 삭제
                     </button>
+                  </div>
+                  <div className="space-y-3 max-h-40 overflow-y-auto">
+                    {uploadedFiles.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between bg-gray-700 rounded-lg p-3">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          <span className="text-white text-sm">{file.name}</span>
+                          <span className="text-gray-400 text-xs">
+                            ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => removeFile(index)}
+                          className="text-red-400 hover:text-red-300 p-1 rounded hover:bg-red-900/20 transition-colors duration-200"
+                        >
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
-              
-              
-              {/* 파일 슬롯들 */}
-              <div className="space-y-6">
-                {Object.entries(fileSlots).map(([slotKey, slot]) => (
-                    <div
-                      key={slotKey}
-                      className={`p-6 rounded-lg border-2 transition-colors duration-200 ${
-                        slot 
-                          ? 'border-green-500 bg-green-900/20' 
-                          : 'border-gray-600 bg-gray-800'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4">
-                          <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                            slot ? 'bg-green-500' : 'bg-gray-500'
-                          }`}>
-                            {slot && (
-                              <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                            )}
-                          </div>
-                          <span className="font-medium text-white text-lg">{slotKey}</span>
-                        </div>
-                        
-                        {slot ? (
-                          <div className="flex items-center space-x-3">
-                            <span className="text-base text-gray-300 truncate max-w-48">
-                              {slot.file.name}
-                            </span>
-                            <button
-                              onClick={() => removeFile(slotKey as keyof FileSlots)}
-                              className="text-red-400 hover:text-red-300 p-2 rounded-lg hover:bg-red-900/20 transition-colors duration-200"
-                            >
-                              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                              </svg>
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-gray-500 text-base">파일 없음</span>
-                        )}
+
+
+              {/* 처리 단계 설명 */}
+              <div className="bg-gray-800 rounded-lg p-6">
+                <h3 className="text-lg font-medium text-white mb-6">분석 과정</h3>
+                <div className="space-y-4">
+                  {/* 1. 파일 전처리 */}
+                  <div className={`p-4 rounded-lg ${processingStep >= 1 ? 'bg-blue-900/30 border border-blue-500' : 'bg-gray-700'}`}>
+                    <div className="flex items-center space-x-4">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${processingStep >= 1 ? 'bg-blue-500' : 'bg-gray-500'}`}>
+                        <span className="text-white font-medium">1</span>
                       </div>
+                      <div className="flex-1">
+                        <h4 className="text-white font-medium">파일 전처리</h4>
+                        <p className="text-gray-400 text-sm">N4 Bias Correction + ComBat 정규화</p>
+                      </div>
+                      {processingStep > 1 && (
+                        <div className="text-green-400">
+                          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
                     </div>
-                  ))}
+                    {processingStep === 1 && (
+                      <div className="mt-3 w-full bg-gray-600 rounded-full h-2">
+                        <div className="bg-blue-500 h-2 rounded-full transition-all duration-300" style={{width: `${processingProgress}%`}}></div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 2. 종양 세그멘테이션 */}
+                  <div className={`p-4 rounded-lg ${processingStep >= 2 ? 'bg-blue-900/30 border border-blue-500' : 'bg-gray-700'}`}>
+                    <div className="flex items-center space-x-4">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${processingStep >= 2 ? 'bg-blue-500' : 'bg-gray-500'}`}>
+                        <span className="text-white font-medium">2</span>
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-white font-medium">종양 세그멘테이션</h4>
+                        <p className="text-gray-400 text-sm">U-Net 모델로 종양 영역 자동 추출</p>
+                      </div>
+                      {processingStep > 2 && (
+                        <div className="text-green-400">
+                          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                    {processingStep === 2 && (
+                      <div className="mt-3 w-full bg-gray-600 rounded-full h-2">
+                        <div className="bg-blue-500 h-2 rounded-full transition-all duration-300" style={{width: `${processingProgress}%`}}></div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 3. AI 추론 */}
+                  <div className={`p-4 rounded-lg ${processingStep >= 3 ? 'bg-blue-900/30 border border-blue-500' : 'bg-gray-700'}`}>
+                    <div className="flex items-center space-x-4">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${processingStep >= 3 ? 'bg-blue-500' : 'bg-gray-500'}`}>
+                        <span className="text-white font-medium">3</span>
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-white font-medium">AI 추론 (Radiomics + 3D CNN)</h4>
+                        <p className="text-gray-400 text-sm">OncoType DX 점수 예측</p>
+                      </div>
+                      {processingStep > 3 && (
+                        <div className="text-green-400">
+                          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                    {processingStep === 3 && (
+                      <div className="mt-3 w-full bg-gray-600 rounded-full h-2">
+                        <div className="bg-blue-500 h-2 rounded-full transition-all duration-300" style={{width: `${processingProgress}%`}}></div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 4. 결과 생성 및 XAI 분석 */}
+                  <div className={`p-4 rounded-lg ${processingStep >= 4 ? 'bg-blue-900/30 border border-blue-500' : 'bg-gray-700'}`}>
+                    <div className="flex items-center space-x-4">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${processingStep >= 4 ? 'bg-blue-500' : 'bg-gray-500'}`}>
+                        <span className="text-white font-medium">4</span>
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-white font-medium">결과 생성 및 XAI 분석</h4>
+                        <p className="text-gray-400 text-sm">Grad-CAM 히트맵 + 피처 기여도 분석</p>
+                      </div>
+                      {processingStep > 4 && (
+                        <div className="text-green-400">
+                          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                    {processingStep === 4 && (
+                      <div className="mt-3 w-full bg-gray-600 rounded-full h-2">
+                        <div className="bg-blue-500 h-2 rounded-full transition-all duration-300" style={{width: `${processingProgress}%`}}></div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 전체 진행률 */}
+                {processingStep > 0 && (
+                  <div className="mt-6 p-4 bg-gray-700 rounded-lg">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-white font-medium">
+                        전체 진행률: {Math.min(100, Math.round(((processingStep - 1) * 25) + (processingProgress * 0.25)))}%
+                      </span>
+                      <span className="text-gray-400 text-sm">
+                        {processingStep < 5 ? `단계 ${processingStep}/4 진행 중` : '분석 완료!'}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-600 rounded-full h-3">
+                      <div 
+                        className="bg-blue-500 h-3 rounded-full transition-all duration-300" 
+                        style={{width: `${Math.min(100, Math.round(((processingStep - 1) * 25) + (processingProgress * 0.25)))}%`}}
+                      ></div>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* 액션 버튼들 - 더 크게 */}
-              <div className="mt-6">
+            </div>
+
+            {/* 오른쪽: 액션 버튼들, 환자 정보, 추가 정보 */}
+            <div className="xl:col-span-1 flex flex-col space-y-6">
+              {/* 액션 버튼들 */}
+              <div className="space-y-4">
                 <button
                   onClick={startAnalysis}
                   disabled={uploadedCount === 0 || isUploading}
@@ -393,20 +430,139 @@ export default function UploadPage() {
                   {isUploading ? '업로드 중...' : '분석 시작'}
                 </button>
                 
-                <div className="mt-6">
-                  <button
-                    onClick={resetFiles}
-                    disabled={uploadedCount === 0}
-                    className={`w-full py-4 px-8 rounded-lg font-medium transition-colors duration-200 text-lg ${
-                      uploadedCount === 0
-                        ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                        : 'bg-gray-600 hover:bg-gray-700 text-gray-200'
-                    }`}
-                  >
-                    초기화
-                  </button>
+                <button
+                  onClick={resetFiles}
+                  disabled={uploadedCount === 0}
+                  className={`w-full py-4 px-8 rounded-lg font-medium transition-colors duration-200 text-lg ${
+                    uploadedCount === 0
+                      ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                      : 'bg-gray-600 hover:bg-gray-700 text-gray-200'
+                  }`}
+                >
+                  초기화
+                </button>
+              </div>
+
+              {/* 환자 정보 박스 */}
+              <div className="bg-gray-800 rounded-lg p-6">
+                <h3 className="text-lg font-medium text-white mb-4">환자 정보</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">성함:</label>
+                    <div className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-gray-300">
+                      {patientInfo.name || '파일에서 자동 파싱됩니다'}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">성별:</label>
+                    <div className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-gray-300">
+                      {patientInfo.gender || '파일에서 자동 파싱됩니다'}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">생년월일:</label>
+                    <div className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-gray-300">
+                      {patientInfo.birthDate || '파일에서 자동 파싱됩니다'}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">촬영 일자:</label>
+                    <div className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-gray-300">
+                      {patientInfo.scanDate || '파일에서 자동 파싱됩니다'}
+                    </div>
+                  </div>
                 </div>
               </div>
+
+                {/* 추가 정보 박스 */}
+                <div className="bg-gray-800 rounded-lg p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-medium text-white">추가 정보</h3>
+                    <div className="flex space-x-2">
+                      {isEditingAdditionalInfo ? (
+                        <button
+                          onClick={() => setIsEditingAdditionalInfo(false)}
+                          className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded transition-colors duration-200"
+                        >
+                          저장
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setIsEditingAdditionalInfo(true)}
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors duration-200"
+                        >
+                          수정
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">체중:</label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          value={additionalInfo.weight}
+                          onChange={(e) => setAdditionalInfo(prev => ({ ...prev, weight: e.target.value }))}
+                          disabled={!isEditingAdditionalInfo}
+                          className={`w-full px-3 py-2 pr-12 rounded-lg text-white focus:outline-none focus:border-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                            isEditingAdditionalInfo 
+                              ? 'bg-gray-700 border border-gray-600' 
+                              : 'bg-gray-600 border border-gray-500 text-gray-300'
+                          }`}
+                          placeholder="체중을 입력하세요"
+                        />
+                        <span className="absolute right-3 top-2 text-gray-400 text-sm">kg</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">키:</label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          value={additionalInfo.height}
+                          onChange={(e) => setAdditionalInfo(prev => ({ ...prev, height: e.target.value }))}
+                          disabled={!isEditingAdditionalInfo}
+                          className={`w-full px-3 py-2 pr-12 rounded-lg text-white focus:outline-none focus:border-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                            isEditingAdditionalInfo 
+                              ? 'bg-gray-700 border border-gray-600' 
+                              : 'bg-gray-600 border border-gray-500 text-gray-300'
+                          }`}
+                          placeholder="키를 입력하세요"
+                        />
+                        <span className="absolute right-3 top-2 text-gray-400 text-sm">cm</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">과거 병력:</label>
+                      <textarea
+                        value={additionalInfo.medicalHistory}
+                        onChange={(e) => setAdditionalInfo(prev => ({ ...prev, medicalHistory: e.target.value }))}
+                        disabled={!isEditingAdditionalInfo}
+                        className={`w-full px-3 py-2 rounded-lg text-white focus:outline-none focus:border-blue-500 h-20 resize-none ${
+                          isEditingAdditionalInfo 
+                            ? 'bg-gray-700 border border-gray-600' 
+                            : 'bg-gray-600 border border-gray-500 text-gray-300'
+                        }`}
+                        placeholder="과거 병력을 입력하세요"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">참고 사항:</label>
+                      <textarea
+                        value={additionalInfo.notes}
+                        onChange={(e) => setAdditionalInfo(prev => ({ ...prev, notes: e.target.value }))}
+                        disabled={!isEditingAdditionalInfo}
+                        className={`w-full px-3 py-2 rounded-lg text-white focus:outline-none focus:border-blue-500 h-20 resize-none ${
+                          isEditingAdditionalInfo 
+                            ? 'bg-gray-700 border border-gray-600' 
+                            : 'bg-gray-600 border border-gray-500 text-gray-300'
+                        }`}
+                        placeholder="참고 사항을 입력하세요"
+                      />
+                    </div>
+                  </div>
+                </div>
             </div>
           </div>
         </div>

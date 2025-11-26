@@ -42,21 +42,19 @@ export default function ShapleyChart({ sessionData }: ShapleyChartProps) {
         return;
       }
 
-      console.log('🔍 Shapley Values 조회 중...', sessionId);
-      const response = await fetch(`http://localhost:5001/api/session/${sessionId}/analysis`);
+      console.log('🔍 Shapley Values 시뮬레이션 로드 중...', sessionId);
       
-      if (!response.ok) {
-        throw new Error('Shapley 데이터를 불러올 수 없습니다.');
-      }
-
-      const data = await response.json();
-      console.log('✅ Shapley Values 로드:', data);
+      // 시뮬레이션 데이터 로드 (1초 지연)
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      if (data.success && data.ai_analysis?.shapley_values) {
-        setShapleyData(data.ai_analysis.shapley_values);
-      } else {
-        setError('Shapley 데이터가 없습니다.');
-      }
+      const mockData = {
+        values: defaultShapleyData,
+        importance: defaultImportanceData
+      };
+      
+      setShapleyData(mockData);
+      console.log('✅ Shapley Values 시뮬레이션 로드 완료:', mockData);
+      
     } catch (err) {
       console.error('❌ Shapley Values 로드 실패:', err);
       setError(err instanceof Error ? err.message : '알 수 없는 오류');

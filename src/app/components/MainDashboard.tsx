@@ -83,68 +83,29 @@ export default function MainDashboard() {
     setTumorOverlayUrl(url);
   };
 
-  // Flask API 세션 데이터 로드 함수
+  // 세션 데이터 로드 함수 (시뮬레이션)
   const loadSessionData = useCallback(async (sessionId: string) => {
     setIsLoadingSession(true);
     try {
-      console.log('🔄 Flask API 세션 데이터 로드 중:', sessionId);
+      console.log('🔄 세션 데이터 시뮬레이션 로드 중:', sessionId);
       
-      // Flask 서버 연결 확인
-      try {
-        const healthCheck = await fetch('http://localhost:5001/health', {
-          method: 'GET',
-          signal: AbortSignal.timeout(3000) // 3초 타임아웃
-        });
-        
-        if (!healthCheck.ok) {
-          throw new Error('Flask 서버 응답 없음');
+      // 시뮬레이션 지연
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      console.log('✅ 세션 데이터 시뮬레이션 로드 완료');
+      console.log('📝 일반 뷰어 모드로 진행합니다.');
+      
+      // 시뮬레이션 데이터 설정
+      const mockSessionData = {
+        status: { status: 'completed', progress: 100 },
+        results: { 
+          success: true,
+          tumor_overlay_url: null,
+          analysis_complete: true
         }
-      } catch (healthError) {
-        console.warn('⚠️ Flask 서버에 연결할 수 없습니다:', healthError);
-        console.log('📝 일반 뷰어 모드로 계속 진행합니다.');
-        return; // Flask 서버 없이도 뷰어는 정상 작동
-      }
+      };
       
-      // 세션 상태 확인
-      const statusResponse = await fetch(`http://localhost:5001/api/session/${sessionId}/status`, {
-        signal: AbortSignal.timeout(5000) // 5초 타임아웃
-      });
-      
-      if (!statusResponse.ok) {
-        if (statusResponse.status === 404) {
-          console.warn('⚠️ 세션을 찾을 수 없습니다. 만료되었을 수 있습니다.');
-          localStorage.removeItem('currentSessionId');
-          localStorage.removeItem('hasUploadedFiles');
-          return;
-        }
-        throw new Error(`세션 상태 확인 실패: ${statusResponse.status}`);
-      }
-      
-      const statusData = await statusResponse.json();
-      console.log('📊 세션 상태:', statusData);
-      
-      // 분석 결과 가져오기
-      const resultsResponse = await fetch(`http://localhost:5001/api/session/${sessionId}/results`, {
-        signal: AbortSignal.timeout(5000) // 5초 타임아웃
-      });
-      
-      if (!resultsResponse.ok) {
-        throw new Error(`분석 결과 가져오기 실패: ${resultsResponse.status}`);
-      }
-      
-      const resultsData = await resultsResponse.json();
-      console.log('🎯 분석 결과:', resultsData);
-      
-      setSessionData({
-        status: statusData,
-        results: resultsData
-      });
-      
-      // 종양 오버레이 URL만 설정 (일반 뷰잉은 IndexedDB 사용)
-      if (resultsData.tumor_overlay_url) {
-        setTumorOverlayUrl(resultsData.tumor_overlay_url);
-        console.log('🎯 종양 오버레이 URL 설정:', resultsData.tumor_overlay_url);
-      }
+      setSessionData(mockSessionData);
       
     } catch (error) {
       console.error('❌ 세션 데이터 로드 실패:', error);

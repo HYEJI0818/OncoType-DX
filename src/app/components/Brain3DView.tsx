@@ -741,7 +741,7 @@ export default function Brain3DView({ imageUrl, niftiHeader, niftiImage, origina
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-gray-400 text-sm text-center">
 
-              <div>No CT data</div>
+              <div>No MRI data</div>
               <div>Upload NIfTI file</div>
             </div>
           </div>
