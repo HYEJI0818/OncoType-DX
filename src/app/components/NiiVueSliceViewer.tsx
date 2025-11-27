@@ -50,6 +50,7 @@ interface NiiVueSliceViewerProps {
   originalNiftiUrl?: string;
   globalSelectedSegFile?: string | null;
   tumorOverlayUrl?: string | null; // Tumor 오버레이 URL 추가
+  maxSlice?: number; // 최대 슬라이스 수 제한
 }
 
 export default function NiiVueSliceViewer({ 
@@ -63,7 +64,8 @@ export default function NiiVueSliceViewer({
   patientId,
   originalNiftiUrl,
   globalSelectedSegFile,
-  tumorOverlayUrl
+  tumorOverlayUrl,
+  maxSlice
 }: NiiVueSliceViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const nvRef = useRef<NiivueInstance | null>(null);
@@ -1247,6 +1249,12 @@ export default function NiiVueSliceViewer({
             break;
         }
         
+        // maxSlice prop이 있으면 해당 값으로 제한
+        if (maxSlice && maxSlice < maxSlicesForPlane) {
+          maxSlicesForPlane = maxSlice;
+          console.log(`🎯 ${plane} 슬라이스 제한: ${maxSlice}까지`);
+        }
+        
         setMaxSlices(maxSlicesForPlane);
         setCurrentSlice(Math.floor(maxSlicesForPlane / 2)); // 중간 슬라이스부터 시작
         }
@@ -1364,13 +1372,109 @@ export default function NiiVueSliceViewer({
 
         {/* 뷰어 */}
         <div className="relative bg-black rounded-lg overflow-hidden" style={{ aspectRatio: '1' }}>
-          {/* 빈 상태 */}
+          {/* 빈 상태 또는 데이터 표시 */}
           {!file && !isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-gray-400 text-sm text-center">
-                <div>No MRI data</div>
-                <div>Upload NIfTI file</div>
-              </div>
+            <div className="absolute inset-0 p-4 overflow-y-auto">
+              {/* OncoType DX 예측 결과 */}
+              {title === "OncoType DX 예측 결과" && (
+                <div className="text-white space-y-4">
+                  <div className="text-center">
+                    <div className="text-4xl font-bold text-yellow-400 mb-2">42점</div>
+                    <div className="text-lg text-yellow-300 mb-4">(중간위험군)</div>
+                    <div className="text-xs text-gray-300 mb-2">
+                      저위험 ≤25 | 중간 26-50 | 고위험 ≥51
+                    </div>
+                    <div className="text-sm text-blue-400">신뢰도: 87%</div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Patient Information */}
+              {title === "Patient information" && (
+                <div className="text-white space-y-4 h-full flex flex-col">
+                  <div className="space-y-2 text-sm">
+                    <div>• 환자: 홍길순 (F / 48세)</div>
+                    <div>• 환자번호: 20241120-001</div>
+                    <div>• 촬영일자: 2024-11-15</div>
+                    <div>• MRI 장비: Siemens 3T</div>
+                  </div>
+                  
+                  <div className="mt-auto space-y-2">
+                    <button className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors">
+                      파일 업로드
+                    </button>
+                    <button className="w-full px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-xs rounded transition-colors">
+                      분석 시작
+                    </button>
+                    <button className="w-full px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded transition-colors">
+                      리포트 출력
+                    </button>
+                  </div>
+                </div>
+              )}
+              
+              {/* Radiomics Features */}
+              {title === "Radiomics Feature" && (
+                <div className="text-white space-y-3 h-full flex flex-col">
+                  <div className="text-sm font-medium mb-2">Radiomics 피처 (Top 5)</div>
+                  
+                  <div className="space-y-2 text-xs flex-1">
+                    <div className="flex justify-between items-center">
+                      <span>1. 조영증강 불균일도</span>
+                      <div className="text-right">
+                        <div className="text-red-400 font-bold">0.78</div>
+                        <div className="text-gray-400 text-[10px]">(정상: 0.45-0.65)</div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-between items-center">
+                      <span>2. 종양 경계 불규칙성</span>
+                      <div className="text-right">
+                        <div className="text-red-400 font-bold">1.92</div>
+                        <div className="text-gray-400 text-[10px]">(정상: 1.20-1.50)</div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-between items-center">
+                      <span>3. 종양 이질성</span>
+                      <div className="text-right">
+                        <div className="text-red-400 font-bold">2.34</div>
+                        <div className="text-gray-400 text-[10px]">(정상: 1.80-2.10)</div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-between items-center">
+                      <span>4. 종양 크기</span>
+                      <div className="text-right">
+                        <div className="text-red-400 font-bold">3.2 cm³</div>
+                        <div className="text-gray-400 text-[10px]">(기준: &lt;2.0)</div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-between items-center">
+                      <span>5. 관류 패턴 변이</span>
+                      <div className="text-right">
+                        <div className="text-red-400 font-bold">0.65</div>
+                        <div className="text-gray-400 text-[10px]">(정상: 0.40-0.55)</div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <button className="w-full px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white text-xs rounded transition-colors mt-auto">
+                    전체 feature 보기 →
+                  </button>
+                </div>
+              )}
+              
+              {/* 기본 상태 (3D 등) */}
+              {title !== "OncoType DX 예측 결과" && title !== "Patient information" && title !== "Radiomics Feature" && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="text-gray-400 text-sm text-center">
+                    <div>No MRI data</div>
+                    <div>Upload NIfTI file</div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
           

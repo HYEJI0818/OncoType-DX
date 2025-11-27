@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from '@/contexts/EnhancedTranslationContext';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardHeader from './DashboardHeader';
-import CTView from './CTView';
-import Brain3DView from './Brain3DView';
+import MRIView from './MRIView';
+import Breast3DView from './Breast3DView';
 import FeatureTable from './FeatureTable';
 import ShapleyChart from './ShapleyChart';
 import OptimizedLLMAnalysis from './OptimizedLLMAnalysis';
@@ -83,19 +83,71 @@ export default function MainDashboard() {
     setTumorOverlayUrl(url);
   };
 
-  // 세션 데이터 로드 함수 (시뮬레이션)
+  // 세션 데이터 로드 함수 (Flask 서버 없이도 작동)
   const loadSessionData = useCallback(async (sessionId: string) => {
     setIsLoadingSession(true);
     try {
-      console.log('🔄 세션 데이터 시뮬레이션 로드 중:', sessionId);
+      console.log('🔄 세션 데이터 로드 중:', sessionId);
       
-      // 시뮬레이션 지연
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // 먼저 로컬 메타데이터 파일에서 데이터 로드 시도
+      try {
+        const metadataResponse = await fetch(`/uploads/${sessionId}/metadata.json`);
+        if (metadataResponse.ok) {
+          const metadata = await metadataResponse.json();
+          console.log('✅ 로컬 메타데이터에서 세션 데이터 로드:', metadata);
+          
+          // 로컬 메타데이터를 기반으로 시뮬레이션 데이터 생성
+          const mockSessionData = {
+            status: { status: 'completed', progress: 100 },
+            results: { 
+              success: true,
+              tumor_overlay_url: null,
+              analysis_complete: true
+            },
+            ai_analysis: {
+              llm_analysis: {
+                diagnosis: "유방암 의심 소견이 관찰됩니다.",
+                confidence: 87,
+                key_findings: [
+                  "좌측 유방에 불규칙한 경계의 종괴 확인",
+                  "조영증강 패턴이 악성 종양과 일치",
+                  "주변 조직 침윤 소견 동반"
+                ],
+                recommendation: "추가 조영제 검사 및 조직검사 권장",
+                analysis_time: new Date().toISOString()
+              },
+              shapley_values: {
+                values: [
+                  { feature: "Volume", value: 0.45, positive: true },
+                  { feature: "Surface Area", value: 0.32, positive: true },
+                  { feature: "Sphericity", value: -0.18, positive: false },
+                  { feature: "Compactness", value: 0.23, positive: true },
+                  { feature: "Elongation", value: -0.12, positive: false }
+                ]
+              },
+              feature_analysis: {
+                radiomic_features: [
+                  { category: "Shape", feature: "Volume", value: 12.5, unit: "cm³" },
+                  { category: "Shape", feature: "Surface Area", value: 45.2, unit: "cm²" },
+                  { category: "Intensity", feature: "Mean", value: 156.8, unit: "HU" },
+                  { category: "Texture", feature: "Contrast", value: 0.78, unit: "" }
+                ]
+              }
+            }
+          };
+          
+          setSessionData(mockSessionData);
+          return;
+        }
+      } catch (metadataError) {
+        console.log('📝 로컬 메타데이터 로드 실패, Flask 서버 시도...');
+      }
       
-      console.log('✅ 세션 데이터 시뮬레이션 로드 완료');
-      console.log('📝 일반 뷰어 모드로 진행합니다.');
+      // Flask 서버 비활성화됨 - 시뮬레이션 데이터만 사용
+      console.log('📝 Flask 서버 비활성화 - 시뮬레이션 데이터만 사용');
       
-      // 시뮬레이션 데이터 설정
+      // 기본 시뮬레이션 데이터 설정
+      console.log('✅ 시뮬레이션 데이터로 진행');
       const mockSessionData = {
         status: { status: 'completed', progress: 100 },
         results: { 
@@ -109,14 +161,7 @@ export default function MainDashboard() {
       
     } catch (error) {
       console.error('❌ 세션 데이터 로드 실패:', error);
-      
-      // 네트워크 오류나 서버 오류의 경우 사용자에게 알림 없이 조용히 처리
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        console.log('📝 Flask 서버 연결 실패 - 일반 뷰어 모드로 계속 진행');
-      } else {
-        // 다른 오류의 경우만 사용자에게 알림
-        console.warn('⚠️ AI 분석 결과를 불러올 수 없습니다. 일반 뷰어 기능은 정상 작동합니다.');
-      }
+      console.log('📝 일반 뷰어 모드로 계속 진행');
     } finally {
       setIsLoadingSession(false);
     }
@@ -133,6 +178,13 @@ export default function MainDashboard() {
       loadSessionData(currentSessionId);
     } else {
       console.log('📝 저장된 세션 없음 - 일반 뷰어 모드로 실행');
+      
+      // 테스트를 위해 임시로 세션 정보 설정
+      console.log('🧪 테스트용 세션 정보 설정');
+      localStorage.setItem('hasUploadedFiles', 'true');
+      localStorage.setItem('currentSessionId', 'session_test_123');
+      setSessionId('session_test_123');
+      loadSessionData('session_test_123');
     }
   }, [loadSessionData]);
 
@@ -144,6 +196,62 @@ export default function MainDashboard() {
     niftiHeader?: unknown;
     niftiImage?: ArrayBuffer;
   }>({});
+
+  // UUID 기반 업로드된 파일 데이터 로드
+  useEffect(() => {
+    const loadUploadedData = async () => {
+      try {
+        if (!sessionId) return;
+        
+        console.log('🔄 UUID 기반 파일 데이터 로드 중:', sessionId);
+        
+        // 메타데이터 파일 로드
+        const metadataResponse = await fetch(`/uploads/${sessionId}/metadata.json`);
+        if (metadataResponse.ok) {
+          const metadata = await metadataResponse.json();
+          console.log('✅ 메타데이터 로드 성공:', metadata);
+          
+          // 첫 번째 파일을 3D 뷰어에 로드
+          const sequences = ['T1', 'T1CE', 'T2', 'FLAIR'];
+          const firstAvailableSequence = sequences.find(seq => metadata.files[seq]);
+          
+          if (firstAvailableSequence && metadata.files[firstAvailableSequence]) {
+            const firstFileUrl = `/${metadata.files[firstAvailableSequence].file_path}`;
+            console.log('🎯 첫 번째 파일 로드:', firstFileUrl);
+            
+            setOriginalNiftiUrl(firstFileUrl);
+            setSelectedViews(new Set(['3d']));
+            setUploadedImages({
+              brain3d: firstFileUrl
+            });
+            
+            console.log('✅ UUID 기반 3D 뷰어 활성화 완료');
+          }
+        } else {
+          console.warn('⚠️ 메타데이터 파일을 찾을 수 없습니다. 기본 샘플 데이터를 로드합니다.');
+          
+          // 기본 샘플 데이터 로드
+          const sampleNiftiUrl = '/uploads/19824666-8e5d-4c05-8ce9-336e82132d93/T1_BraTS-GLI-01532-000-t1n.nii.gz';
+          const response = await fetch(sampleNiftiUrl, { method: 'HEAD' });
+          if (response.ok) {
+            setOriginalNiftiUrl(sampleNiftiUrl);
+            setSelectedViews(new Set(['3d']));
+            setUploadedImages({
+              brain3d: sampleNiftiUrl
+            });
+            console.log('✅ 기본 샘플 데이터 로드 완료');
+          }
+        }
+      } catch (error) {
+        console.error('❌ 파일 데이터 로드 실패:', error);
+      }
+    };
+
+    // 세션이 설정된 후 업로드된 데이터 로드
+    if (sessionId) {
+      setTimeout(loadUploadedData, 1000);
+    }
+  }, [sessionId]);
 
   // 디버깅 로그를 개발 환경에서만 실행하도록 최적화
   useEffect(() => {
@@ -231,6 +339,19 @@ export default function MainDashboard() {
     });
   };
 
+  // NIfTI 데이터 파싱 핸들러 (모든 뷰어용)
+  const handleNiftiDataParsed = (header: unknown, image: ArrayBuffer) => {
+    console.log('🎯 메인 뷰어 데이터 설정:', header, image);
+    setNiftiHeader(header);
+    setNiftiImage(image);
+  };
+
+  // 원본 NIfTI URL 핸들러
+  const handleOriginalNiftiUrl = (url: string) => {
+    console.log('🎯 원본 NIfTI URL 설정:', url);
+    setOriginalNiftiUrl(url);
+  };
+
   // 환자 선택 시 데이터 초기화
   const handlePatientSelect = (patientId?: number) => {
     setNiftiHeader(null);
@@ -270,124 +391,123 @@ export default function MainDashboard() {
               <div className="flex items-center space-x-3">
                 <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                 <span className="text-green-300 font-medium">
-                  AI 분석 완료: {sessionId.substring(0, 8)}...
+                  AI 분석 완료: {sessionId}
                 </span>
               </div>
-              <button
-                onClick={() => {
-                  localStorage.removeItem('currentSessionId');
-                  localStorage.removeItem('hasUploadedFiles');
-                  window.location.reload();
-                }}
-                className="text-gray-400 hover:text-gray-300 text-sm px-3 py-1 rounded hover:bg-gray-700/50"
-              >
-                새 분석 시작
-              </button>
+              
+              {/* 오른쪽에 추가된 버튼들 */}
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => setShowMPRViewer(true)}
+                  className="px-3 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors whitespace-nowrap"
+                >
+                  전체 화면
+                </button>
+                <button
+                  className={`px-3 py-1 text-xs rounded transition-colors whitespace-nowrap ${
+                    tumorOverlayUrl 
+                      ? 'bg-green-600 hover:bg-green-700 text-white'
+                      : 'bg-red-600 hover:bg-red-700 text-white'
+                  }`}
+                  onClick={() => {
+                    // TUMOR 버튼 로직 (필요시 추가)
+                    console.log('TUMOR 버튼 클릭');
+                  }}
+                >
+                  {tumorOverlayUrl ? 'TUMOR ON' : 'TUMOR'}
+                </button>
+              </div>
             </div>
           </div>
         )}
 
-        {/* 메인 콘텐츠: 좌측 뷰어, 우측 AI 분석 */}
-        <div className="flex gap-6 min-h-[700px]">
-          {/* 좌측: 뷰어 섹션 */}
+        {/* 메인 콘텐츠: 뷰어 섹션 */}
+        <div className="flex gap-4 min-h-[700px] overflow-x-auto">
+          {/* 뷰어 섹션 */}
           <div className="flex-1">
-            <div className="grid grid-cols-1 lg:grid-cols-9 gap-4 h-full">
-              <div className="lg:col-span-2 order-1">
-                <NIfTISliceViewer 
-                  className="h-full" 
-                  onViewSelect={handleViewSelect}
-                  selectedViews={selectedViews}
-                  onNiftiDataParsed={(header, image) => {
-                    setNiftiHeader(header);
-                    setNiftiImage(image);
-                  }}
-                  on3DOnlyDataParsed={handle3DOnlyDataParsed} // 3D 전용 데이터 콜백 추가
-                  onOriginalNiftiUrl={setOriginalNiftiUrl} // 원본 NIfTI URL 콜백 연결
-                  patientId={selectedPatientId}
-                  globalSelectedSegFile={globalSelectedSegFile}
-                  onFullscreenClick={() => setShowMPRViewer(true)}
-                  onTumorOverlayUrl={handleTumorOverlayUrl} // Tumor 오버레이 URL 핸들러
-                  onSequenceChange={setCurrentSequence} // 현재 시퀀스 변경 콜백 추가
-                />
-              </div>
-
-              <div className="lg:col-span-7 order-2">
-                <div className="grid grid-cols-2 gap-4 h-full">
-                  {/* 첫 번째 뷰어 - 3D Brain (항상 표시) */}
-                  <Brain3DView
-                    imageUrl={uploadedImages.brain3d}
+              <div className="w-full h-full">
+                <div className="w-full">
+                  <div className="grid grid-cols-2 gap-4 h-full">
+                  {/* 첫 번째 뷰어 - 3D View */}
+                  <MRIView
+                    title="3D"
+                    leftLabel="R"
+                    rightLabel="L"
+                    imageUrl={uploadedImages.axial || uploadedImages.brain3d}
                     niftiHeader={(selectedViews.size > 1 ? niftiHeader : brain3DData.niftiHeader) as unknown as NiftiHeader}
                     niftiImage={(selectedViews.size > 1 ? niftiImage : brain3DData.niftiImage) || undefined}
-                    originalNiftiUrl={originalNiftiUrl} // tumor 오버레이를 위해 항상 전달
-                    patientId={selectedPatientId}
-                    // slice 제거 - 각 뷰어 독립적 관리
-                    globalSelectedSegFile={globalSelectedSegFile}
-                    tumorOverlayUrl={tumorOverlayUrl} // Tumor 오버레이 URL 전달
-                  />
-                  
-                  {/* 두 번째 뷰어 - Axial */}
-                  <CTView
-                    title={currentSequence ? `${t.axialView} (${currentSequence})` : t.axialView}
-                    leftLabel="R"
-                    rightLabel="L"
-                    imageUrl={selectedViews instanceof Set && selectedViews.has('axial') ? uploadedImages.axial : undefined}
-                    niftiHeader={selectedViews instanceof Set && selectedViews.has('axial') ? niftiHeader as unknown as NiftiHeader : undefined}
-                    niftiImage={selectedViews instanceof Set && selectedViews.has('axial') ? niftiImage || undefined : undefined}
                     plane="axial"
-                    // slice 제거 - 각 뷰어 독립적 관리
                     patientId={selectedPatientId}
                     originalNiftiUrl={originalNiftiUrl} // tumor 오버레이를 위해 항상 전달
                     globalSelectedSegFile={globalSelectedSegFile}
                     tumorOverlayUrl={tumorOverlayUrl} // Tumor 오버레이 URL 전달
+                    maxSlice={120} // 슬라이스 120까지 제한
                   />
                   
-                  {/* 세 번째 뷰어 - Coronal */}
-                  <CTView
-                    title={currentSequence ? `${t.coronalView} (${currentSequence})` : t.coronalView}
+                  {/* 두 번째 뷰어 - OncoType DX 예측 결과 */}
+                  <MRIView
+                    title="OncoType DX 예측 결과"
                     leftLabel="R"
                     rightLabel="L"
-                    imageUrl={selectedViews instanceof Set && selectedViews.has('coronal') ? uploadedImages.coronal : undefined}
-                    niftiHeader={selectedViews instanceof Set && selectedViews.has('coronal') ? niftiHeader as unknown as NiftiHeader : undefined}
-                    niftiImage={selectedViews instanceof Set && selectedViews.has('coronal') ? niftiImage || undefined : undefined}
-                    plane="coronal"
-                    // slice 제거 - 각 뷰어 독립적 관리
+                    imageUrl={undefined} // 뷰어 비활성화
+                    niftiHeader={undefined}
+                    niftiImage={undefined}
+                    plane="axial"
                     patientId={selectedPatientId}
-                    originalNiftiUrl={originalNiftiUrl} // tumor 오버레이를 위해 항상 전달
+                    originalNiftiUrl={originalNiftiUrl}
                     globalSelectedSegFile={globalSelectedSegFile}
-                    tumorOverlayUrl={tumorOverlayUrl} // Tumor 오버레이 URL 전달
+                    tumorOverlayUrl={tumorOverlayUrl}
                   />
                   
-                  {/* 네 번째 뷰어 - Sagittal */}
-                  <CTView
-                    title={currentSequence ? `${t.sagittalView} (${currentSequence})` : t.sagittalView}
+                  {/* 세 번째 뷰어 - Patient information */}
+                  <MRIView
+                    title="Patient information"
+                    leftLabel="R"
+                    rightLabel="L"
+                    imageUrl={undefined} // 뷰어 비활성화
+                    niftiHeader={undefined}
+                    niftiImage={undefined}
+                    plane="coronal"
+                    patientId={selectedPatientId}
+                    originalNiftiUrl={originalNiftiUrl}
+                    globalSelectedSegFile={globalSelectedSegFile}
+                    tumorOverlayUrl={tumorOverlayUrl}
+                  />
+                  
+                  {/* 네 번째 뷰어 - Radiomics Feature */}
+                  <MRIView
+                    title="Radiomics Feature"
                     leftLabel="F"
                     rightLabel="B"
-                    imageUrl={selectedViews instanceof Set && selectedViews.has('sagittal') ? uploadedImages.sagittal : undefined}
-                    niftiHeader={selectedViews instanceof Set && selectedViews.has('sagittal') ? niftiHeader as unknown as NiftiHeader : undefined}
-                    niftiImage={selectedViews instanceof Set && selectedViews.has('sagittal') ? niftiImage || undefined : undefined}
+                    imageUrl={undefined} // 뷰어 비활성화
+                    niftiHeader={undefined}
+                    niftiImage={undefined}
                     plane="sagittal"
-                    // slice 제거 - 각 뷰어 독립적 관리
                     patientId={selectedPatientId}
-                    originalNiftiUrl={originalNiftiUrl} // tumor 오버레이를 위해 항상 전달
+                    originalNiftiUrl={originalNiftiUrl}
                     globalSelectedSegFile={globalSelectedSegFile}
-                    tumorOverlayUrl={tumorOverlayUrl} // Tumor 오버레이 URL 전달
+                    tumorOverlayUrl={tumorOverlayUrl}
                   />
                 </div>
               </div>
             </div>
           </div>
 
-          {/* 우측: AI 분석 박스들 */}
-          <div className="w-80 space-y-3">
-            <div className="h-96">
+          {/* 중앙: AI 분석 박스들 */}
+          <div className="w-80 space-y-3 flex-shrink-0">
+            <div className="h-fit">
               <OptimizedLLMAnalysis sessionData={sessionData} />
             </div>
             
-            <div className="h-72">
+            <div className="h-[500px]">
               <ShapleyChart sessionData={sessionData} />
             </div>
-            
-            <div className="h-[500px]">
+
+          </div>
+
+          {/* 우측: Feature Analysis 독립 패널 */}
+          <div className="w-80 flex-shrink-0">
+            <div className="h-fit">
               <FeatureTable sessionData={sessionData} />
             </div>
           </div>

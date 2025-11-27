@@ -11,7 +11,15 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: '10mb'
     }
-  }
+  },
+  async rewrites() {
+    return [
+      {
+        source: '/uploads/:path*',
+        destination: '/api/files/:path*',
+      },
+    ];
+  },
 };
 
 export default nextConfig;

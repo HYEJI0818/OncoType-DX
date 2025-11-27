@@ -8,6 +8,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   userType: 'admin' | 'test' | null;
   user: any;
+  loading: boolean;
   isLoading: boolean;
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
@@ -25,6 +26,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        // 개발 환경에서 Supabase 연결 문제 시 임시 인증 우회
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔧 개발 환경 - 임시 인증 우회 활성화');
+          setIsAuthenticated(true);
+          setUser({ 
+            id: 'dev-user', 
+            email: 'test@dev.com',
+            user_metadata: { role: 'test', name: 'Test User' }
+          });
+          setUserType('test');
+          setIsLoading(false);
+          return;
+        }
+
         const { session, error } = await getSafeSession();
         
         if (error && isRefreshTokenError(error)) {
@@ -49,6 +64,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
       } catch (error) {
         console.error('인증 확인 중 예외 발생:', error);
+        // 개발 환경에서는 오류 시에도 인증 우회
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔧 개발 환경 - 오류 시 인증 우회');
+          setIsAuthenticated(true);
+          setUser({ 
+            id: 'dev-user', 
+            email: 'test@dev.com',
+            user_metadata: { role: 'test', name: 'Test User' }
+          });
+          setUserType('test');
+          setIsLoading(false);
+          return;
+        }
         await forceSignOut();
         setIsAuthenticated(false);
         setUser(null);
@@ -59,33 +87,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     checkAuth();
 
-    // 인증 상태 변경 리스너
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('인증 상태 변경:', event, session);
-        
-        if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
-          if (event === 'SIGNED_OUT') {
+    // 인증 상태 변경 리스너 (개발 환경에서는 비활성화)
+    let subscription: any = null;
+    if (process.env.NODE_ENV !== 'development') {
+      const { data } = supabase.auth.onAuthStateChange(
+        async (event, session) => {
+          console.log('인증 상태 변경:', event, session);
+          
+          if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+            if (event === 'SIGNED_OUT') {
+              setIsAuthenticated(false);
+              setUser(null);
+              setUserType(null);
+            }
+          }
+          
+          if (session?.user) {
+            setIsAuthenticated(true);
+            setUser(session.user);
+            const role = session.user.user_metadata?.role;
+            setUserType(role === '관리자' ? 'admin' : 'test');
+          } else if (event !== 'TOKEN_REFRESHED') {
             setIsAuthenticated(false);
             setUser(null);
             setUserType(null);
           }
         }
-        
-        if (session?.user) {
-          setIsAuthenticated(true);
-          setUser(session.user);
-          const role = session.user.user_metadata?.role;
-          setUserType(role === '관리자' ? 'admin' : 'test');
-        } else if (event !== 'TOKEN_REFRESHED') {
-          setIsAuthenticated(false);
-          setUser(null);
-          setUserType(null);
-        }
-      }
-    );
+      );
+      subscription = data.subscription;
+    } else {
+      console.log('🔧 개발 환경 - 인증 상태 변경 리스너 비활성화');
+    }
 
-    return () => subscription.unsubscribe();
+    return () => {
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+    };
   }, []);
 
   const login = async (username: string, password: string): Promise<boolean> => {
@@ -144,7 +182,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, userType, user, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ 
+      isAuthenticated, 
+      userType, 
+      user, 
+      loading: isLoading,
+      isLoading, 
+      login, 
+      logout 
+    }}>
       {children}
     </AuthContext.Provider>
   );

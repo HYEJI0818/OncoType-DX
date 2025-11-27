@@ -18,7 +18,7 @@ interface NiftiHeader {
   [key: string]: unknown;
 }
 
-interface Brain3DViewProps {
+interface Breast3DViewProps {
   imageUrl?: string;
   niftiHeader?: NiftiHeader;
   niftiImage?: ArrayBuffer;
@@ -30,14 +30,14 @@ interface Brain3DViewProps {
   tumorOverlayUrl?: string | null; // Tumor 오버레이 URL 추가
 }
 
-export default function Brain3DView({ imageUrl, niftiHeader, niftiImage, originalNiftiUrl, patientId, globalSelectedSegFile, onFullscreenClick, tumorOverlayUrl }: Brain3DViewProps) {
+export default function Breast3DView({ imageUrl, niftiHeader, niftiImage, originalNiftiUrl, patientId, globalSelectedSegFile, onFullscreenClick, tumorOverlayUrl }: Breast3DViewProps) {
   const { t } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const nvRef = useRef<NiivueInstance | null>(null);
   
   // 각 뷰어 인스턴스를 고유하게 식별하기 위한 ID (hydration 안전)
   const uniqueId = useId();
-  const viewerId = `brain3d-${uniqueId.replace(/:/g, '-')}`;
+  const viewerId = `breast3d-${uniqueId.replace(/:/g, '-')}`;
   const [isLoading, setIsLoading] = useState(false);
   const [showMPRViewer, setShowMPRViewer] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -729,7 +729,7 @@ export default function Brain3DView({ imageUrl, niftiHeader, niftiImage, origina
     <div className="bg-gray-800 rounded-lg p-4">
         {/* 헤더 */}
         <div className="relative mb-3">
-          <h3 className="text-white text-base font-medium text-center">{t.brain3dView}</h3>
+          <h3 className="text-white text-base font-medium text-center">{t.breast3dView}</h3>
         </div>
 
       {/* 3D 뷰어 - 더 작고 둥근 디자인 */}

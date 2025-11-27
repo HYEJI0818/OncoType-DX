@@ -1194,53 +1194,21 @@ export default function NIfTISliceViewer({
     }
   };
 
-  // UUID 폴더 안의 seg.nii.gz 파일을 자동으로 로드하는 함수
+  // UUID 폴더 안의 seg.nii.gz 파일을 자동으로 로드하는 함수 (Flask 서버 비활성화)
   const loadTumorFromSegFile = async () => {
     try {
       const sessionId = localStorage.getItem('currentSessionId');
       if (!sessionId) {
-        alert('seg 파일이 생성되지 않았습니다.');
+        console.log('📝 Flask 서버 비활성화 - seg 파일 로드 건너뜀');
         return;
       }
 
-      console.log('🔍 Flask API에서 seg.nii.gz 파일 확인 중...', sessionId);
+      console.log('📝 Flask 서버 비활성화 - seg 파일 로드 기능 사용 안함');
       
-      // 먼저 seg 파일이 존재하는지 확인
-      const analysisResponse = await fetch(`http://localhost:5001/api/session/${sessionId}/analysis`);
-      if (!analysisResponse.ok) {
-        throw new Error('분석 결과를 확인할 수 없습니다.');
-      }
-
-      const analysisData = await analysisResponse.json();
-      if (!analysisData.success || !analysisData.seg_file_exists) {
-        alert('seg 파일이 생성되지 않았습니다.');
-        return;
-      }
-
-      console.log('✅ seg 파일 존재 확인됨, 다운로드 시작...');
-      
-      // seg.nii.gz 파일 다운로드
-      const segResponse = await fetch(`http://localhost:5001/api/session/${sessionId}/seg-file`);
-      if (!segResponse.ok) {
-        throw new Error('seg 파일 다운로드에 실패했습니다.');
-      }
-
-      const segBlob = await segResponse.blob();
-      
-      // Blob을 URL로 변환하여 Tumor 오버레이로 설정
-      const segUrl = URL.createObjectURL(segBlob);
-      setTumorOverlayUrl(segUrl);
-      
-      // MainDashboard에 tumor 오버레이 URL 전달
-      if (onTumorOverlayUrl) {
-        onTumorOverlayUrl(segUrl);
-      }
-      
-      console.log('✅ Tumor 오버레이 로드 완료:', segUrl);
+      // Flask 서버가 비활성화되어 있으므로 seg 파일 로드하지 않음
       
     } catch (error) {
-      console.error('❌ Tumor 로드 실패:', error);
-      alert(`Tumor 로드에 실패했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
+      console.log('📝 Flask 서버 비활성화 - Tumor 로드 기능 사용 안함');
     }
   };
 
@@ -1371,17 +1339,17 @@ export default function NIfTISliceViewer({
         </div>
         
         {/* 전체화면 버튼과 TUMOR 버튼 */}
-        <div className="flex flex-col space-y-1">
+        <div className="flex justify-end space-x-2">
           {onFullscreenClick && (
             <button
               onClick={onFullscreenClick}
-              className="w-full px-2 py-1.5 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors"
+              className="px-3 py-1.5 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors"
             >
               {t.fullscreen || '전체 화면'}
             </button>
           )}
           <button
-            className={`w-full px-2 py-1.5 text-xs rounded transition-colors ${
+            className={`px-3 py-1.5 text-xs rounded transition-colors ${
               tumorOverlayUrl 
                 ? 'bg-green-600 hover:bg-green-700 text-white'
                 : 'bg-red-600 hover:bg-red-700 text-white'

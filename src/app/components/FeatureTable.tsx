@@ -68,17 +68,21 @@ export default function FeatureTable({ sessionData }: FeatureTableProps) {
       
       const mockFeatureAnalysisData: FeatureAnalysisData = {
         radiomic_features: [
-          { name: 'Volume', value: 1234.56, unit: 'mm³' },
-          { name: 'Surface_area', value: 567.89, unit: 'mm²' },
-          { name: 'GLCM_contrast', value: 0.234, unit: '' },
-          { name: 'GLRLM_LRE', value: 45.67, unit: '' },
-          { name: 'Compactness', value: 0.789, unit: '' },
-          { name: 'GLSZM_ZE', value: 12.34, unit: '' },
-          { name: 'Sphericity', value: 0.456, unit: '' },
-          { name: 'Flatness', value: 0.123, unit: '' },
+          { category: '형태학 (Morphology)', feature: '부피 (cc)', value: 1234.56, unit: 'mm³' },
+          { category: '형태학 (Morphology)', feature: '표면적 (cm²)', value: 567.89, unit: 'mm²' },
+          { category: '형태학 (Morphology)', feature: 'Compactness (0-1)', value: 0.789, unit: '' },
+          { category: '형태학 (Morphology)', feature: 'Sphericity (0-1)', value: 0.456, unit: '' },
+          { category: '형태학 (Morphology)', feature: 'Flatness (0-1)', value: 0.123, unit: '' },
+          { category: 'GLCM (Texture)', feature: 'Contrast', value: 0.234, unit: '' },
+          { category: 'GLCM (Texture)', feature: 'Correlation', value: 0.67, unit: '' },
+          { category: 'GLCM (Texture)', feature: 'Homogeneity', value: 0.91, unit: '' },
+          { category: 'GLRLM', feature: 'Long Run Emphasis', value: 45.67, unit: '' },
+          { category: 'GLSZM', feature: 'Small-Zone Emphasis', value: 12.34, unit: '' },
+          { category: 'NGTDM', feature: 'Coarseness', value: 0.012, unit: '' },
+          { category: 'NGTDM', feature: 'Busyness', value: 0.87, unit: '' },
         ],
         summary: {
-          total_features: 8,
+          total_features: 12,
           analysis_method: 'PyRadiomics'
         }
       };
@@ -257,13 +261,15 @@ export default function FeatureTable({ sessionData }: FeatureTableProps) {
   );
 
   return (
-    <div className="bg-gray-800 rounded-lg p-4 h-full flex flex-col overflow-y-auto">
+    <div className="bg-gray-800 rounded-lg p-4 h-fit flex flex-col">
       <h3 className="text-white text-sm font-medium mb-2 text-center">
         {t.featureAnalysis || 'Feature Analysis'}
       </h3>
       
-      {/* 활성화된 항목들 */}
-      <div className="space-y-4">
+      {/* 컨텐츠 영역 */}
+      <div className="overflow-y-auto max-h-[600px]">
+        {/* 활성화된 항목들 */}
+        <div className="space-y-4">
         {Object.entries(activeFeatures).map(([category, features]) => {
           const categoryKey = categoryKeyMap[category];
           return (
@@ -342,6 +348,10 @@ export default function FeatureTable({ sessionData }: FeatureTableProps) {
           </div>
         </div>
       )}
+      
+      {/* 하단 여백 */}
+      <div className="h-6"></div>
+      </div>
     </div>
   );
 } 

@@ -138,6 +138,8 @@ export default function ShapleyChart({ sessionData }: ShapleyChartProps) {
               </div>
             ))}
           </div>
+          {/* Flatness 아래 여백 추가 */}
+          <div className="h-6"></div>
         </div>
       </div>
     </div>

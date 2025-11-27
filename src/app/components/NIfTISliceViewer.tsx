@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from '@/contexts/EnhancedTranslationContext';
 import { fileStorage, type FileData } from '@/lib/indexedDB';
+import Breast3DView from './Breast3DView';
 
-type Sequence = 'T1N' | 'T1C' | 'T2' | 'FLAIR';
+type Sequence = 'MAIN';
 type Plane = 'axial' | 'sagittal' | 'coronal';
 
 interface NiftiHeader {
@@ -64,42 +65,73 @@ export default function NIfTISliceViewer({
   // 현재 로드된 시퀀스 타입 상태
   const [currentLoadedSequence, setCurrentLoadedSequence] = useState<string | null>(null);
   
+  
+  
+  
   // Tumor 오버레이 관련 상태
   const [tumorOverlayUrl, setTumorOverlayUrl] = useState<string | null>(null);
   const [tumorOverlayData, setTumorOverlayData] = useState<{header: NiftiHeader, image: ArrayBuffer} | null>(null);
   
-  // 업로드된 파일 정보 로드
+  // 원본 NIfTI URL 상태
+  const [originalNiftiUrl, setOriginalNiftiUrl] = useState<string | null>(null);
+  
+  // UUID 기반 업로드된 파일 정보 로드
   useEffect(() => {
     const loadUploadedFiles = async () => {
       try {
         const hasFiles = localStorage.getItem('hasUploadedFiles');
-        if (hasFiles) {
-          console.log('IndexedDB에서 파일 정보 로드 중...');
-          const files = await fileStorage.getAllFiles();
-          setUploadedFiles(files);
-          console.log('업로드된 파일 정보 로드:', Object.keys(files));
+        const sessionId = localStorage.getItem('currentSessionId');
+        
+        if (hasFiles && sessionId) {
+          console.log('🔄 UUID 기반 파일 정보 로드 중:', sessionId);
           
-          // 모든 업로드된 시퀀스 파일을 자동으로 로드하여 각각의 미리보기 표시
-          const availableSequences = ['T1', 'T1CE', 'T2', 'FLAIR'];
-          let isFirstSequence = true;
-          
-          availableSequences.forEach((seq, index) => {
-            if (files[seq]) {
-              console.log(`${seq} 파일 자동 로드 예약`);
-              const isFirst = isFirstSequence;
-              isFirstSequence = false; // 첫 번째 이후로는 false
+          // 메타데이터 파일에서 파일 정보 로드
+          const metadataResponse = await fetch(`/uploads/${sessionId}/metadata.json`);
+          if (metadataResponse.ok) {
+            const metadata = await metadataResponse.json();
+            console.log('✅ 메타데이터 로드 성공:', metadata);
+            
+            // 파일 정보를 IndexedDB 형태로 변환
+            const files: Record<string, any> = {};
+            
+            setUploadedFiles(files);
+            console.log('업로드된 파일 정보 로드:', Object.keys(files));
+            
+            // 모든 업로드된 시퀀스 파일을 자동으로 로드하여 각각의 미리보기 표시
+            let isFirstSequence = true;
+            
+            // 업로드된 파일이 있으면 모든 시퀀스 슬롯에 해당 파일을 표시
+            const uploadedSequences = Object.keys(files);
+            if (uploadedSequences.length > 0) {
+              const firstUploadedFile = files[uploadedSequences[0]];
+              console.log(`📁 업로드된 파일을 모든 시퀀스에 적용:`, firstUploadedFile.name);
               
-              setTimeout(() => {
-                if (isFirst) {
-                  // 첫 번째 시퀀스는 미리보기 + 3D 뷰어용 데이터 로드 (2D 뷰어는 활성화하지 않음)
-                  console.log(`🎯 첫 번째 시퀀스 ${seq} - 미리보기 + 3D 뷰어 로드`);
-                  loadSequenceFile(seq, false, true); // 3D 뷰어용 데이터도 로드
-                } else {
-                  loadSequenceFile(seq); // 미리보기만 로드
-                }
-              }, 100 + (index * 200)); // 각 파일을 순차적으로 로드 (200ms 간격)
+              // 모든 시퀀스 슬롯에 업로드된 파일 적용
+              availableSequences.forEach((seq, index) => {
+                console.log(`${seq} 슬롯에 업로드된 파일 로드 예약`);
+                const isFirst = isFirstSequence;
+                isFirstSequence = false; // 첫 번째 이후로는 false
+                
+                setTimeout(() => {
+                  if (isFirst) {
+                    // 첫 번째 시퀀스는 미리보기 + 3D 뷰어용 데이터 로드
+                    console.log(`🎯 첫 번째 시퀀스 ${seq} - 미리보기 + 3D 뷰어 로드`);
+                    loadSequenceFileFromUrl(seq, firstUploadedFile.url, false, true);
+                  } else {
+                    // 나머지는 미리보기만 로드
+                    loadSequenceFileFromUrl(seq, firstUploadedFile.url);
+                  }
+                }, 100 + (index * 200)); // 각 파일을 순차적으로 로드 (200ms 간격)
+              });
             }
-          });
+          } else {
+            console.warn('⚠️ 메타데이터 파일을 찾을 수 없습니다. IndexedDB에서 로드를 시도합니다.');
+            
+            // 기존 IndexedDB 방식으로 폴백
+            const files = await fileStorage.getAllFiles();
+            setUploadedFiles(files);
+            console.log('업로드된 파일 정보 로드 (IndexedDB):', Object.keys(files));
+          }
         }
       } catch (error) {
         console.error('업로드된 파일 정보 로드 실패:', error);
@@ -166,7 +198,7 @@ export default function NIfTISliceViewer({
   }, [globalSelectedSegFile]);
 
   // 각 시퀀스별 미리보기 렌더링 함수 (종양 오버레이 적용)
-  const renderSequencePreview = useCallback((sequenceType: string, canvas: HTMLCanvasElement, data: { header: NiftiHeader; image: ArrayBuffer }) => {
+  const renderSequencePreview = useCallback((sequenceType: string, canvas: HTMLCanvasElement, data: { header: NiftiHeader; image: ArrayBuffer }, plane: 'axial' | 'coronal' | 'sagittal' = 'axial') => {
     if (!canvas || !data) return;
 
     const { header, image } = data;
@@ -242,14 +274,25 @@ export default function NIfTISliceViewer({
       maxVal = 1;
     }
     
-    // Axial 슬라이스 데이터 추출 및 렌더링 (종양 오버레이 포함)
-    // 🔄 오른쪽 Axial 뷰어와 동일한 방향으로 상하 반전만 적용 (좌우는 원래대로)
+    // 방향에 따른 슬라이스 데이터 추출 및 렌더링
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
-        // 상하 반전: y 좌표를 뒤집어서 오른쪽 뷰어와 일치시킴
-        const flippedY = height - 1 - y;
-        // 좌우는 원래대로 유지
-        const niftiIndex = sliceIndex * width * height + flippedY * width + x;
+        let niftiIndex;
+        
+        if (plane === 'axial') {
+          // Axial: Z축 슬라이스 (상하 반전)
+          const flippedY = height - 1 - y;
+          niftiIndex = sliceIndex * width * height + flippedY * width + x;
+        } else if (plane === 'coronal') {
+          // Coronal: Y축 슬라이스 (앞뒤 방향)
+          const flippedY = height - 1 - y;
+          niftiIndex = flippedY * width * height + sliceIndex * width + x;
+        } else if (plane === 'sagittal') {
+          // Sagittal: X축 슬라이스 (좌우 방향)
+          const flippedY = height - 1 - y;
+          niftiIndex = flippedY * width * height + y * width + sliceIndex;
+        }
+        
         const pixelIndex = (y * width + x) * 4;
         
         if (niftiIndex < niftiArray.length) {
@@ -351,31 +394,31 @@ export default function NIfTISliceViewer({
 
   // 각 시퀀스 데이터가 로드될 때마다 해당 미리보기 렌더링
   useEffect(() => {
-    // T1 미리보기 렌더링
+    // 3D 패널 (T1) - axial 방향으로 렌더링
     if (sequenceData.T1 && t1PreviewCanvasRef.current) {
       setTimeout(() => {
-        renderSequencePreview('T1', t1PreviewCanvasRef.current!, sequenceData.T1!);
+        renderSequencePreview('T1', t1PreviewCanvasRef.current!, sequenceData.T1!, 'axial');
       }, 100);
     }
     
-    // T1CE 미리보기 렌더링
+    // Axial View 패널 (T1CE) - axial 방향으로 렌더링
     if (sequenceData.T1CE && t1cePreviewCanvasRef.current) {
       setTimeout(() => {
-        renderSequencePreview('T1CE', t1cePreviewCanvasRef.current!, sequenceData.T1CE!);
+        renderSequencePreview('T1CE', t1cePreviewCanvasRef.current!, sequenceData.T1CE!, 'axial');
       }, 100);
     }
     
-    // T2 미리보기 렌더링
+    // Coronal View 패널 (T2) - coronal 방향으로 렌더링
     if (sequenceData.T2 && t2PreviewCanvasRef.current) {
       setTimeout(() => {
-        renderSequencePreview('T2', t2PreviewCanvasRef.current!, sequenceData.T2!);
+        renderSequencePreview('T2', t2PreviewCanvasRef.current!, sequenceData.T2!, 'coronal');
       }, 100);
     }
     
-    // FLAIR 미리보기 렌더링
+    // Sagittal View 패널 (FLAIR) - sagittal 방향으로 렌더링
     if (sequenceData.FLAIR && flairPreviewCanvasRef.current) {
       setTimeout(() => {
-        renderSequencePreview('FLAIR', flairPreviewCanvasRef.current!, sequenceData.FLAIR!);
+        renderSequencePreview('FLAIR', flairPreviewCanvasRef.current!, sequenceData.FLAIR!, 'sagittal');
       }, 100);
     }
   }, [sequenceData, renderSequencePreview]);
@@ -384,19 +427,19 @@ export default function NIfTISliceViewer({
   useEffect(() => {
     console.log('🔥 종양 오버레이 데이터 변경됨 - 모든 미리보기 다시 렌더링', !!tumorOverlayData);
     
-    // 모든 시퀀스 미리보기를 다시 렌더링 (종양 오버레이 있든 없든)
+    // 모든 패널 미리보기를 다시 렌더링 (종양 오버레이 있든 없든)
     setTimeout(() => {
       if (sequenceData.T1 && t1PreviewCanvasRef.current) {
-        renderSequencePreview('T1', t1PreviewCanvasRef.current, sequenceData.T1);
+        renderSequencePreview('T1', t1PreviewCanvasRef.current, sequenceData.T1, 'axial');
       }
       if (sequenceData.T1CE && t1cePreviewCanvasRef.current) {
-        renderSequencePreview('T1CE', t1cePreviewCanvasRef.current, sequenceData.T1CE);
+        renderSequencePreview('T1CE', t1cePreviewCanvasRef.current, sequenceData.T1CE, 'axial');
       }
       if (sequenceData.T2 && t2PreviewCanvasRef.current) {
-        renderSequencePreview('T2', t2PreviewCanvasRef.current, sequenceData.T2);
+        renderSequencePreview('T2', t2PreviewCanvasRef.current, sequenceData.T2, 'coronal');
       }
       if (sequenceData.FLAIR && flairPreviewCanvasRef.current) {
-        renderSequencePreview('FLAIR', flairPreviewCanvasRef.current, sequenceData.FLAIR);
+        renderSequencePreview('FLAIR', flairPreviewCanvasRef.current, sequenceData.FLAIR, 'sagittal');
       }
     }, 100);
   }, [tumorOverlayData, sequenceData, renderSequencePreview]);
@@ -491,12 +534,98 @@ export default function NIfTISliceViewer({
     }
   }, [maxSlices.axial, maxSlices.coronal, maxSlices.sagittal]);
 
-  // 특정 시퀀스 타입의 파일을 로드하는 함수
+  // URL에서 특정 시퀀스 타입의 파일을 로드하는 함수
+  const loadSequenceFileFromUrl = async (sequenceType: string, fileUrl: string, isUserClick: boolean = false, is3DOnly: boolean = false) => {
+    try {
+      console.log(`${sequenceType} 파일 URL에서 로드 시도:`, fileUrl);
+      
+      // URL에서 파일 데이터 가져오기
+      const response = await fetch(fileUrl);
+      if (!response.ok) {
+        throw new Error(`파일 로드 실패: ${response.status}`);
+      }
+      
+      const arrayBuffer = await response.arrayBuffer();
+      console.log(`${sequenceType} 파일 로드 중:`, fileUrl);
+      
+      // NIfTI 파일 파싱
+      const nifti = await import('nifti-reader-js');
+      
+      let processBuffer = arrayBuffer;
+      
+      // 압축된 파일인 경우 압축 해제
+      if (nifti.isCompressed(arrayBuffer)) {
+        console.log(`${sequenceType}: 압축된 파일 감지, 압축 해제 중...`);
+        processBuffer = nifti.decompress(arrayBuffer) as ArrayBuffer;
+      }
+      
+      // NIfTI 파일인지 확인
+      if (!nifti.isNIFTI(processBuffer)) {
+        throw new Error(`유효한 ${sequenceType} NIfTI 파일이 아닙니다.`);
+      }
+      
+      const header = nifti.readHeader(processBuffer);
+      const image = nifti.readImage(header, processBuffer);
+      
+      // NIfTI 데이터를 상태에 저장 (현재 선택된 시퀀스)
+      setNiftiHeader(header as unknown as NiftiHeader);
+      setNiftiImage(image);
+      
+      // 각 시퀀스별 독립적인 데이터 저장
+      const sequenceNiftiData = { header: header as unknown as NiftiHeader, image };
+      setSequenceData(prev => ({
+        ...prev,
+        [sequenceType]: sequenceNiftiData
+      }));
+      
+      // 각 방향별 최대 슬라이스 수 계산
+      const dims = header.dims;
+      const newMaxSlices = {
+        axial: dims[3] || 100,
+        coronal: dims[2] || 100,
+        sagittal: dims[1] || 100
+      };
+      setMaxSlices(newMaxSlices);
+      
+      // 현재 선택된 시퀀스 업데이트
+      setCurrentLoadedSequence(sequenceType);
+      onSequenceChange?.(sequenceType);
+      
+      
+      // 콜백 호출
+      if (is3DOnly && on3DOnlyDataParsed) {
+        on3DOnlyDataParsed(header, image);
+        onOriginalNiftiUrl?.(fileUrl);
+        setOriginalNiftiUrl(fileUrl); // 로컬 상태 업데이트
+      } else if (onNiftiDataParsed) {
+        onNiftiDataParsed(header, image);
+        onOriginalNiftiUrl?.(fileUrl);
+        setOriginalNiftiUrl(fileUrl); // 로컬 상태 업데이트
+      }
+      
+      console.log(`✅ ${sequenceType} 파일 로드 완료`);
+      
+    } catch (error) {
+      console.error(`❌ ${sequenceType} 파일 로드 실패:`, error);
+      alert(`${sequenceType} 파일 로드에 실패했습니다: ${error}`);
+    }
+  };
+
+  // 특정 시퀀스 타입의 파일을 로드하는 함수 (IndexedDB)
   const loadSequenceFile = async (sequenceType: string, isUserClick: boolean = false, is3DOnly: boolean = false) => {
     try {
       console.log(`${sequenceType} 파일 로드 시도...`);
       
-      // IndexedDB에서 파일 데이터 가져오기
+      // 먼저 업로드된 파일이 있는지 확인
+      if (uploadedFiles && Object.keys(uploadedFiles).length > 0) {
+        // 업로드된 파일이 있으면 첫 번째 파일을 사용
+        const firstFile = Object.values(uploadedFiles)[0];
+        console.log(`${sequenceType} 슬롯에 업로드된 파일 사용:`, firstFile.name);
+        await loadSequenceFileFromUrl(sequenceType, firstFile.url, isUserClick, is3DOnly);
+        return;
+      }
+      
+      // IndexedDB에서 파일 데이터 가져오기 (폴백)
       const fileData = await fileStorage.getFile(sequenceType);
       if (!fileData) {
         console.log(`${sequenceType} 파일이 없습니다.`);
@@ -601,6 +730,7 @@ export default function NIfTISliceViewer({
           if (onOriginalNiftiUrl) {
             onOriginalNiftiUrl(blobUrl);
           }
+          setOriginalNiftiUrl(blobUrl); // 로컬 상태 업데이트
         } catch (urlError) {
           console.error('Blob URL 생성 실패:', urlError);
         }
@@ -834,18 +964,52 @@ export default function NIfTISliceViewer({
     
     console.log(`데이터 타입: ${datatypeCode}, 배열 길이: ${niftiArray.length}`);
     
-    // 데이터 범위 확인 (전체 데이터에서 확인)
+    // 슬라이스별 데이터 범위 확인 (노이즈 제거를 위해)
     let minVal = Infinity, maxVal = -Infinity;
-    for (let i = 0; i < niftiArray.length; i++) {
-      const val = niftiArray[i];
-      if (val !== 0 && val < minVal) minVal = val; // 0이 아닌 값만 고려
-      if (val > maxVal) maxVal = val;
+    
+    // 현재 슬라이스의 데이터만 샘플링하여 범위 계산
+    const sliceDataSample = [];
+    for (let y = 0; y < actualHeight; y++) {
+      for (let x = 0; x < actualWidth; x++) {
+        let niftiIndex: number;
+        
+        switch (plane) {
+          case 'axial':
+            niftiIndex = sliceIndex * width * height + y * width + x;
+            break;
+          case 'sagittal':
+            niftiIndex = (height - 1 - y) * width * height + x * width + sliceIndex;
+            break;
+          case 'coronal':
+            niftiIndex = (depth - 1 - y) * width * height + sliceIndex * width + x;
+            break;
+          default:
+            continue;
+        }
+        
+        if (niftiIndex < niftiArray.length) {
+          const val = niftiArray[niftiIndex];
+          if (val !== 0) { // 0이 아닌 값만 고려
+            sliceDataSample.push(val);
+          }
+        }
+      }
     }
     
-    // 모든 값이 0인 경우 처리
-    if (minVal === Infinity) {
+    // 통계적 방법으로 노이즈 제거
+    if (sliceDataSample.length > 0) {
+      sliceDataSample.sort((a, b) => a - b);
+      const len = sliceDataSample.length;
+      
+      // 하위 5%와 상위 5%를 제거하여 노이즈 제거
+      const lowerIndex = Math.floor(len * 0.05);
+      const upperIndex = Math.floor(len * 0.95);
+      
+      minVal = sliceDataSample[lowerIndex] || 0;
+      maxVal = sliceDataSample[upperIndex] || 255;
+    } else {
       minVal = 0;
-      maxVal = 1; // 기본 범위 설정
+      maxVal = 255;
     }
     
     console.log(`데이터 범위: ${minVal} ~ ${maxVal}`);
@@ -873,16 +1037,24 @@ export default function NIfTISliceViewer({
         if (niftiIndex < niftiArray.length) {
           const value = niftiArray[niftiIndex];
           
-          // 원본 값을 그대로 사용 (0-255 범위로 스케일링만)
+          // 개선된 픽셀 값 처리 (노이즈 제거 및 대비 향상)
           let pixelValue;
           if (maxVal > minVal && maxVal > 0) {
-            pixelValue = ((value - minVal) / (maxVal - minVal)) * 255;
+            // 정규화 후 감마 보정 적용 (대비 향상)
+            const normalized = (value - minVal) / (maxVal - minVal);
+            const gamma = plane === 'sagittal' ? 0.8 : 1.0; // sagittal에서 감마 보정 적용
+            pixelValue = Math.pow(normalized, gamma) * 255;
           } else if (value > 0) {
-            // 범위가 0인 경우 값이 있으면 중간 회색으로 표시
             pixelValue = 128;
           } else {
             pixelValue = 0;
           }
+          
+          // 추가 노이즈 필터링
+          if (plane === 'sagittal' && pixelValue > 0 && pixelValue < 30) {
+            pixelValue = 0; // 낮은 값의 노이즈 제거
+          }
+          
           pixelValue = Math.min(255, Math.max(0, pixelValue));
           
           const pixelIndex = (y * actualWidth + x) * 4;
@@ -1194,53 +1366,22 @@ export default function NIfTISliceViewer({
     }
   };
 
-  // UUID 폴더 안의 seg.nii.gz 파일을 자동으로 로드하는 함수
+  // UUID 폴더 안의 seg.nii.gz 파일을 자동으로 로드하는 함수 (Flask 서버 비활성화)
   const loadTumorFromSegFile = async () => {
     try {
       const sessionId = localStorage.getItem('currentSessionId');
       if (!sessionId) {
-        alert('seg 파일이 생성되지 않았습니다.');
+        console.log('📝 Flask 서버 비활성화 - seg 파일 로드 건너뜀');
         return;
       }
 
-      console.log('🔍 Flask API에서 seg.nii.gz 파일 확인 중...', sessionId);
+      console.log('📝 Flask 서버 비활성화 - seg 파일 로드 기능 사용 안함');
       
-      // 먼저 seg 파일이 존재하는지 확인
-      const analysisResponse = await fetch(`http://localhost:5001/api/session/${sessionId}/analysis`);
-      if (!analysisResponse.ok) {
-        throw new Error('분석 결과를 확인할 수 없습니다.');
-      }
-
-      const analysisData = await analysisResponse.json();
-      if (!analysisData.success || !analysisData.seg_file_exists) {
-        alert('seg 파일이 생성되지 않았습니다.');
-        return;
-      }
-
-      console.log('✅ seg 파일 존재 확인됨, 다운로드 시작...');
-      
-      // seg.nii.gz 파일 다운로드
-      const segResponse = await fetch(`http://localhost:5001/api/session/${sessionId}/seg-file`);
-      if (!segResponse.ok) {
-        throw new Error('seg 파일 다운로드에 실패했습니다.');
-      }
-
-      const segBlob = await segResponse.blob();
-      
-      // Blob을 URL로 변환하여 Tumor 오버레이로 설정
-      const segUrl = URL.createObjectURL(segBlob);
-      setTumorOverlayUrl(segUrl);
-      
-      // MainDashboard에 tumor 오버레이 URL 전달
-      if (onTumorOverlayUrl) {
-        onTumorOverlayUrl(segUrl);
-      }
-      
-      console.log('✅ Tumor 오버레이 로드 완료:', segUrl);
+      // Flask 서버가 비활성화되어 있으므로 seg 파일 로드하지 않음
+      // 필요시 로컬 파일에서 seg.nii.gz를 직접 로드하는 로직 추가 가능
       
     } catch (error) {
-      console.error('❌ Tumor 로드 실패:', error);
-      alert(`Tumor 로드에 실패했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
+      console.log('📝 Flask 서버 비활성화 - Tumor 로드 기능 사용 안함');
     }
   };
 
@@ -1363,198 +1504,67 @@ export default function NIfTISliceViewer({
   };
 
   return (
-    <div className={`bg-gray-800 rounded-lg p-4 ${className}`}>
+    <div className={`bg-gray-800 rounded-lg p-4 pb-2 ${className}`}>
       {/* 상단 컨트롤 */}
       <div className="mb-4 space-y-3">
         <div className="flex items-center justify-center">
           <h3 className="text-white text-sm font-medium text-center">{t.imageList || 'MRI LIST'}</h3>
         </div>
-        
-        {/* 전체화면 버튼과 TUMOR 버튼 */}
-        <div className="flex flex-col space-y-1">
-          {onFullscreenClick && (
-            <button
-              onClick={onFullscreenClick}
-              className="w-full px-2 py-1.5 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors"
-            >
-              {t.fullscreen || '전체 화면'}
-            </button>
-          )}
-          <button
-            className={`w-full px-2 py-1.5 text-xs rounded transition-colors ${
-              tumorOverlayUrl 
-                ? 'bg-green-600 hover:bg-green-700 text-white'
-                : 'bg-red-600 hover:bg-red-700 text-white'
-            }`}
-            onClick={handleTumorUpload}
-          >
-{tumorOverlayUrl ? 'TUMOR ON' : 'TUMOR'}
-          </button>
-          {/* 파일 입력 제거 - 이제 자동으로 seg.nii.gz 파일을 로드함 */}
-        </div>
-        
       </div>
 
-      {/* 4개 패널 (고정 순서: Axial, Coronal, Sagittal, 3D Brain) */}
-      <div className="space-y-3">
-        {/* 1. T1 */}
-        <div 
-          className={`relative rounded-lg overflow-hidden aspect-square cursor-pointer transition-all ${
-            currentLoadedSequence === 'T1'
-              ? 'bg-blue-700 ring-2 ring-blue-400' 
-              : uploadedFiles?.T1 
-                ? 'bg-gray-700 hover:bg-gray-600' 
-                : 'bg-gray-700 hover:bg-gray-600'
-          }`}
-          onClick={() => {
-            loadSequenceFile('T1', true);
-          }}
-        >
-          <div className="absolute top-2 left-2 z-10 bg-black bg-opacity-50 px-2 py-1 rounded text-xs text-white">
-            T1
-          </div>
-          {uploadedFiles?.T1 && (
-            <div className="absolute bottom-2 left-2 right-2 z-10 bg-black bg-opacity-70 px-2 py-1 rounded text-xs text-white truncate">
-              {uploadedFiles.T1.name}
-            </div>
-          )}
-          <canvas
-            ref={t1PreviewCanvasRef}
-            className="w-full h-full"
-            style={{ maxWidth: '100%', maxHeight: '100%' }}
+      {/* 정적 뷰 패널들 */}
+      <div className="space-y-2">
+        {/* 3D View - 실제 Breast3DView 컴포넌트 사용 */}
+        <div className="relative rounded-lg overflow-hidden aspect-square">
+          <Breast3DView
+            imageUrl={undefined}
+            niftiHeader={niftiHeader}
+            niftiImage={niftiImage}
+            originalNiftiUrl={originalNiftiUrl}
+            patientId={patientId}
+            globalSelectedSegFile={globalSelectedSegFile}
+            onFullscreenClick={onFullscreenClick}
+            tumorOverlayUrl={tumorOverlayUrl}
           />
-          {!uploadedFiles?.T1 && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-gray-400 text-center">
-                <div className="text-sm">파일 없음</div>
-                <div className="text-xs mt-1">업로드 필요</div>
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* 2. T1CE */}
-        <div 
-          className={`relative rounded-lg overflow-hidden aspect-square cursor-pointer transition-all ${
-            currentLoadedSequence === 'T1CE'
-              ? 'bg-blue-700 ring-2 ring-blue-400' 
-              : uploadedFiles?.T1CE 
-                ? 'bg-gray-700 hover:bg-gray-600' 
-                : 'bg-gray-700 hover:bg-gray-600'
-          }`}
-          onClick={() => {
-            loadSequenceFile('T1CE', true);
-          }}
-        >
+        {/* Axial View */}
+        <div className="relative rounded-lg overflow-hidden aspect-square cursor-pointer transition-all bg-gray-800 hover:bg-gray-700">
           <div className="absolute top-2 left-2 z-10 bg-black bg-opacity-50 px-2 py-1 rounded text-xs text-white">
-            T1CE
+            Axial
           </div>
-          {uploadedFiles?.T1CE && (
-            <div className="absolute bottom-2 left-2 right-2 z-10 bg-black bg-opacity-70 px-2 py-1 rounded text-xs text-white truncate">
-              {uploadedFiles.T1CE.name}
+          <div className="w-full h-full flex items-center justify-center bg-gray-800">
+            <div className="text-gray-300 text-center">
+              <div className="text-lg font-medium">Axial</div>
+              <div className="text-xs mt-1">View</div>
             </div>
-          )}
-          <canvas
-            ref={t1cePreviewCanvasRef}
-            className="w-full h-full"
-            style={{ maxWidth: '100%', maxHeight: '100%' }}
-          />
-          {!uploadedFiles?.T1CE && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-gray-400 text-center">
-                <div className="text-sm">파일 없음</div>
-                <div className="text-xs mt-1">업로드 필요</div>
-              </div>
-            </div>
-          )}
+          </div>
         </div>
 
-        {/* 3. T2 */}
-        <div 
-          className={`relative rounded-lg overflow-hidden aspect-square cursor-pointer transition-all ${
-            currentLoadedSequence === 'T2'
-              ? 'bg-blue-700 ring-2 ring-blue-400' 
-              : uploadedFiles?.T2 
-                ? 'bg-gray-700 hover:bg-gray-600' 
-                : 'bg-gray-700 hover:bg-gray-600'
-          }`}
-          onClick={() => {
-            loadSequenceFile('T2', true);
-            if (segmentationHeader && segmentationImage) {
-              const tumorSlice = findTumorSliceByPlane(segmentationHeader, segmentationImage, 'axial');
-              // axialSlice만 업데이트하고 전역 slice는 건드리지 않음
-              setState(prev => ({ ...prev, axialSlice: tumorSlice }));
-              // onSliceChange 호출도 제거하여 다른 뷰어에 영향을 주지 않음
-            }
-          }}
-        >
+        {/* Coronal View */}
+        <div className="relative rounded-lg overflow-hidden aspect-square cursor-pointer transition-all bg-gray-800 hover:bg-gray-700">
           <div className="absolute top-2 left-2 z-10 bg-black bg-opacity-50 px-2 py-1 rounded text-xs text-white">
-            T2
+            Coronal
           </div>
-          {uploadedFiles?.T2 && (
-            <div className="absolute bottom-2 left-2 right-2 z-10 bg-black bg-opacity-70 px-2 py-1 rounded text-xs text-white truncate">
-              {uploadedFiles.T2.name}
+          <div className="w-full h-full flex items-center justify-center bg-gray-800">
+            <div className="text-gray-300 text-center">
+              <div className="text-lg font-medium">Coronal</div>
+              <div className="text-xs mt-1">View</div>
             </div>
-          )}
-          <canvas
-            ref={t2PreviewCanvasRef}
-            className="w-full h-full"
-            style={{ maxWidth: '100%', maxHeight: '100%' }}
-          />
-          {!uploadedFiles?.T2 && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-gray-400 text-center">
-                <div className="text-sm">파일 없음</div>
-                <div className="text-xs mt-1">업로드 필요</div>
-              </div>
-            </div>
-          )}
+          </div>
         </div>
 
-        {/* 4. FLAIR */}
-        <div 
-          className={`relative rounded-lg overflow-hidden aspect-square cursor-pointer transition-all ${
-            currentLoadedSequence === 'FLAIR'
-              ? 'bg-blue-700 ring-2 ring-blue-400' 
-              : uploadedFiles?.FLAIR 
-                ? 'bg-gray-700 hover:bg-gray-600' 
-                : 'bg-gray-700 hover:bg-gray-600'
-          }`}
-          onClick={() => {
-            loadSequenceFile('FLAIR', true);
-          }}
-        >
+        {/* Sagittal View */}
+        <div className="relative rounded-lg overflow-hidden aspect-square cursor-pointer transition-all bg-gray-800 hover:bg-gray-700">
           <div className="absolute top-2 left-2 z-10 bg-black bg-opacity-50 px-2 py-1 rounded text-xs text-white">
-            FLAIR
+            Sagittal
           </div>
-          {uploadedFiles?.FLAIR && (
-            <div className="absolute bottom-2 left-2 right-2 z-10 bg-black bg-opacity-70 px-2 py-1 rounded text-xs text-white truncate">
-              {uploadedFiles.FLAIR.name}
+          <div className="w-full h-full flex items-center justify-center bg-gray-800">
+            <div className="text-gray-300 text-center">
+              <div className="text-lg font-medium">Sagittal</div>
+              <div className="text-xs mt-1">View</div>
             </div>
-          )}
-          {niftiHeader && niftiImage ? (
-            <canvas
-              ref={flairPreviewCanvasRef}
-              className="w-full h-full"
-              style={{ maxWidth: '100%', maxHeight: '100%' }}
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <div className="text-gray-400 text-sm text-center">
-                {!uploadedFiles?.FLAIR ? (
-                  <>
-                    <div className="text-sm">파일 없음</div>
-                    <div className="text-xs mt-1">업로드 필요</div>
-                  </>
-                ) : (
-                  <>
-                    <div>No 3D data</div>
-                    <div className="text-xs mt-1">Upload NIfTI file</div>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
+          </div>
         </div>
       </div>
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslation } from '@/contexts/EnhancedTranslationContext';
@@ -27,7 +27,7 @@ interface AdditionalInfo {
 }
 
 export default function UploadPage() {
-  const { logout } = useAuth();
+  const { logout, user, isAuthenticated, loading } = useAuth();
   const { t } = useTranslation();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -53,6 +53,14 @@ export default function UploadPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [processingStep, setProcessingStep] = useState(0);
   const [processingProgress, setProcessingProgress] = useState(0);
+
+  // 인증 상태 확인
+  useEffect(() => {
+    if (!loading && !isAuthenticated && !user) {
+      console.log('🔄 업로드 페이지 - 인증되지 않음, 로그인으로 리다이렉트');
+      router.push('/login');
+    }
+  }, [loading, isAuthenticated, user, router]);
 
   // 파일 업로드 핸들러
   const handleFileUpload = () => {
@@ -121,7 +129,7 @@ export default function UploadPage() {
     });
   };
 
-  // 분석 시작 (시뮬레이션)
+  // 분석 시작 (UUID 기반 파일 저장)
   const startAnalysis = async () => {
     if (uploadedFiles.length === 0) {
       alert('최소 1개의 파일을 업로드해주세요.');
@@ -133,10 +141,37 @@ export default function UploadPage() {
     setProcessingProgress(0);
     
     try {
-      // 1단계: 파일 전처리
-      console.log('🚀 1단계: 파일 전처리 시작...');
+      // UUID 생성
+      const sessionUuid = crypto.randomUUID();
+      console.log('🆔 새 세션 UUID 생성:', sessionUuid);
+
+      // 1단계: 파일 전처리 및 저장
+      console.log('🚀 1단계: 파일 전처리 및 저장 시작...');
       await simulateProgress(1, 3000); // 3초
-      console.log('✅ 1단계 완료: N4 Bias Correction + ComBat 정규화');
+      
+      // uploads 폴더에 UUID 기반으로 파일 저장
+      const formData = new FormData();
+      uploadedFiles.forEach((file, index) => {
+        formData.append(`file_${index}`, file);
+      });
+      formData.append('sessionId', sessionUuid);
+      formData.append('patientName', patientInfo.name || 'Unknown Patient');
+      
+      // 파일 업로드 API 호출
+      console.log('📤 파일 업로드 중...');
+      const uploadResponse = await fetch('/api/upload-session', {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (!uploadResponse.ok) {
+        throw new Error('파일 업로드에 실패했습니다.');
+      }
+      
+      const uploadResult = await uploadResponse.json();
+      console.log('✅ 파일 업로드 성공:', uploadResult);
+      
+      console.log('✅ 1단계 완료: 파일 저장 및 N4 Bias Correction + ComBat 정규화');
 
       // 2단계: 종양 세그멘테이션
       console.log('🔍 2단계: 종양 세그멘테이션 시작...');
@@ -153,34 +188,17 @@ export default function UploadPage() {
       await simulateProgress(4, 3000); // 3초
       console.log('✅ 4단계 완료: Grad-CAM 히트맵 + 피처 기여도 분석');
 
-      // IndexedDB에 파일들 저장 (뷰어용)
-      console.log('💾 IndexedDB에 파일 저장 중...');
-      const savedFiles: string[] = [];
-      
-      for (let i = 0; i < uploadedFiles.length; i++) {
-        const file = uploadedFiles[i];
-        try {
-          await fileStorage.saveFile(`file_${i}`, file);
-          savedFiles.push(file.name);
-          console.log(`✅ ${file.name} IndexedDB 저장 완료`);
-        } catch (error) {
-          console.error(`❌ ${file.name} IndexedDB 저장 실패:`, error);
-        }
-      }
-      
-      console.log('💾 IndexedDB 저장 완료:', savedFiles);
-
       // 완료 표시
       setProcessingStep(5);
       setProcessingProgress(100);
 
-      // 잠시 대기 후 분석 페이지로 이동
+      // 잠시 대기 후 대시보드로 이동
       setTimeout(() => {
-        const mockSessionId = `session_${Date.now()}`;
-        localStorage.setItem('currentSessionId', mockSessionId);
+        localStorage.setItem('currentSessionId', sessionUuid);
         localStorage.setItem('hasUploadedFiles', 'true');
-        console.log('🎯 분석 페이지로 이동:', mockSessionId);
-        router.push('/analysis');
+        localStorage.setItem('uploadedFileCount', uploadedFiles.length.toString());
+        console.log('🎯 대시보드로 이동:', sessionUuid);
+        router.push('/dashboard');
       }, 1000);
 
     } catch (error) {
@@ -511,8 +529,18 @@ export default function UploadPage() {
                               : 'bg-gray-600 border border-gray-500 text-gray-300'
                           }`}
                           placeholder="체중을 입력하세요"
+                          style={{ paddingRight: additionalInfo.weight ? `${Math.max(40, additionalInfo.weight.length * 9 + 35)}px` : '12px' }}
                         />
-                        <span className="absolute right-3 top-2 text-gray-400 text-sm">kg</span>
+                        {additionalInfo.weight && (
+                          <span 
+                            className="absolute top-1/2 transform -translate-y-1/2 text-gray-400 text-sm pointer-events-none"
+                            style={{ 
+                              left: `${Math.max(15, additionalInfo.weight.length * 9 + 20)}px`
+                            }}
+                          >
+                            kg
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div>
@@ -529,8 +557,18 @@ export default function UploadPage() {
                               : 'bg-gray-600 border border-gray-500 text-gray-300'
                           }`}
                           placeholder="키를 입력하세요"
+                          style={{ paddingRight: additionalInfo.height ? `${Math.max(40, additionalInfo.height.length * 9 + 35)}px` : '12px' }}
                         />
-                        <span className="absolute right-3 top-2 text-gray-400 text-sm">cm</span>
+                        {additionalInfo.height && (
+                          <span 
+                            className="absolute top-1/2 transform -translate-y-1/2 text-gray-400 text-sm pointer-events-none"
+                            style={{ 
+                              left: `${Math.max(15, additionalInfo.height.length * 9 + 20)}px`
+                            }}
+                          >
+                            cm
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div>

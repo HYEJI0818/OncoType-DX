@@ -49,7 +49,7 @@ export default function LoginPage() {
         }
       } else {
         // 이메일 로그인
-        const success = await login(username, password);
+        const success = await login(username, password)
         if (success) {
           // 로그인 성공 시 업로드 페이지로 이동
           router.push('/upload');

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useId, useCallback } from 'react';
 import { useTranslation } from '@/contexts/EnhancedTranslationContext';
 // import { Niivue } from '@niivue/niivue'; // 동적 import로 변경
-import OncotypeMPRViewer from './OncotypeMPRViewer';
+import MPRViewer from './MPRViewer';
 
 // NiiVue 타입 정의 (동적 import를 위한)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -37,7 +37,7 @@ export default function Breast3DView({ imageUrl, niftiHeader, niftiImage, origin
   
   // 각 뷰어 인스턴스를 고유하게 식별하기 위한 ID (hydration 안전)
   const uniqueId = useId();
-  const viewerId = `brain3d-${uniqueId.replace(/:/g, '-')}`;
+  const viewerId = `breast3d-${uniqueId.replace(/:/g, '-')}`;
   const [isLoading, setIsLoading] = useState(false);
   const [showMPRViewer, setShowMPRViewer] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -313,13 +313,14 @@ export default function Breast3DView({ imageUrl, niftiHeader, niftiImage, origin
       // 기본 뇌 이미지 로드
       const volumeList = [{ 
         url: originalNiftiUrl,
-        name: 'brain.nii',
+        name: 'breast.nii',
         colormap: 'gray'
       }];
       
       await nvRef.current.loadVolumes(volumeList);
       
-      if (nvRef.current.volumes && nvRef.current.volumes.length > 0) {
+      // 더 안전한 null 체크
+      if (nvRef.current && nvRef.current.volumes && nvRef.current.volumes.length > 0) {
         try {
           // 순수한 3D 모드 설정 (MPRViewer와 동일)
           nvRef.current.setSliceType(4); // 3D 렌더 모드
@@ -363,7 +364,7 @@ export default function Breast3DView({ imageUrl, niftiHeader, niftiImage, origin
         nvRef.current.drawScene();
       }
       
-      setFile(new File([new ArrayBuffer(0)], 'brain.nii'));
+      setFile(new File([new ArrayBuffer(0)], 'breast.nii'));
       
     } catch (error) {
       console.error('3D 뇌 로드 실패:', error);
@@ -380,7 +381,7 @@ export default function Breast3DView({ imageUrl, niftiHeader, niftiImage, origin
       setIsLoading(true);
       
       const blob = new Blob([niftiImage], { type: 'application/octet-stream' });
-      const file = new File([blob], 'brain.nii');
+      const file = new File([blob], 'breast.nii');
       
       await nvRef.current.loadFromFile(file);
       
@@ -421,10 +422,11 @@ export default function Breast3DView({ imageUrl, niftiHeader, niftiImage, origin
 
   // Segmentation 오버레이 로딩 함수
   const loadSegmentationOverlay = async () => {
-    if (!nvRef.current || !globalSelectedSegFile || globalSelectedSegFile.trim() === '' || nvRef.current.volumes.length === 0) {
+    if (!nvRef.current || !globalSelectedSegFile || globalSelectedSegFile.trim() === '' || !nvRef.current.volumes || nvRef.current.volumes.length === 0) {
       console.log('3D 뷰 오버레이 로딩 건너뜀:', { 
         nvRef: !!nvRef.current, 
         globalSelectedSegFile, 
+        volumes: !!nvRef.current?.volumes,
         volumesLength: nvRef.current?.volumes?.length 
       });
       return;
@@ -448,7 +450,7 @@ export default function Breast3DView({ imageUrl, niftiHeader, niftiImage, origin
       const volumeList = [
         { 
           url: originalNiftiUrl,
-          name: 'brain.nii',
+          name: 'breast.nii',
           colormap: 'gray'
         },
         {
@@ -462,10 +464,10 @@ export default function Breast3DView({ imageUrl, niftiHeader, niftiImage, origin
       
       // 볼륨 설정
       if (nvRef.current.volumes.length >= 2) {
-        // 기본 뇌 이미지 설정
-        const brain = nvRef.current.volumes[0];
-        brain.opacity = 1.0;
-        nvRef.current.setColormap(brain.id, 'gray');
+        // 기본 유방 이미지 설정
+        const breast = nvRef.current.volumes[0];
+        breast.opacity = 1.0;
+        nvRef.current.setColormap(breast.id, 'gray');
         
         // 오버레이 설정
         const overlay = nvRef.current.volumes[1];
@@ -478,7 +480,7 @@ export default function Breast3DView({ imageUrl, niftiHeader, niftiImage, origin
         
         nvRef.current.updateGLVolume();
         
-        console.log('3D 뷰 오버레이 로딩 성공 - 뇌:', brain, '오버레이:', overlay);
+        console.log('3D 뷰 오버레이 로딩 성공 - 유방:', breast, '오버레이:', overlay);
       }
       
       // 순수한 3D 모드 설정 재적용 (MPRViewer와 동일)
@@ -523,7 +525,7 @@ export default function Breast3DView({ imageUrl, niftiHeader, niftiImage, origin
       const volumeList = [
         { 
           url: originalNiftiUrl,
-          name: 'brain.nii',
+          name: 'breast.nii',
           colormap: 'gray'
         },
         {
@@ -537,10 +539,10 @@ export default function Breast3DView({ imageUrl, niftiHeader, niftiImage, origin
       
       // 볼륨 설정
       if (nvRef.current.volumes.length >= 2) {
-        // 기본 뇌 이미지 설정
-        const brain = nvRef.current.volumes[0];
-        brain.opacity = 1.0;
-        nvRef.current.setColormap(brain.id, 'gray');
+        // 기본 유방 이미지 설정
+        const breast = nvRef.current.volumes[0];
+        breast.opacity = 1.0;
+        nvRef.current.setColormap(breast.id, 'gray');
         
         // Tumor 오버레이 설정
         const tumorOverlay = nvRef.current.volumes[1];
@@ -553,7 +555,7 @@ export default function Breast3DView({ imageUrl, niftiHeader, niftiImage, origin
         
         nvRef.current.updateGLVolume();
         
-        console.log('Brain3DView Tumor 오버레이 로딩 성공 - 뇌:', brain, '오버레이:', tumorOverlay);
+        console.log('Breast3DView Tumor 오버레이 로딩 성공 - 유방:', breast, '오버레이:', tumorOverlay);
       }
       
       // 순수한 3D 모드 설정 재적용
@@ -729,7 +731,7 @@ export default function Breast3DView({ imageUrl, niftiHeader, niftiImage, origin
     <div className="bg-gray-800 rounded-lg p-4">
         {/* 헤더 */}
         <div className="relative mb-3">
-          <h3 className="text-white text-base font-medium text-center">{t.brain3dView}</h3>
+          <h3 className="text-white text-base font-medium text-center">{t.breast3dView}</h3>
         </div>
 
       {/* 3D 뷰어 - 더 작고 둥근 디자인 */}
@@ -821,7 +823,7 @@ export default function Breast3DView({ imageUrl, niftiHeader, niftiImage, origin
 
       {/* 전체화면 모달 */}
       {showMPRViewer && (
-        <OncotypeMPRViewer
+        <MPRViewer
           imageUrl={imageUrl}
           niftiHeader={niftiHeader}
           niftiImage={niftiImage}
