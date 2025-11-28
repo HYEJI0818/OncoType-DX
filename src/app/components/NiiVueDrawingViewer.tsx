@@ -540,7 +540,7 @@ export default function NiiVueDrawingViewer({
       // 파일명 생성
       const now = new Date();
       const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, -5);
-      const filename = `brain_drawing_patient_${patientId}_${timestamp}.png`;
+      const filename = `breast_drawing_patient_${patientId}_${timestamp}.png`;
       
       console.log('💾 PNG 생성 완료:', {
         filename,
@@ -708,7 +708,7 @@ export default function NiiVueDrawingViewer({
   };
 
   // 뇌 영상 가시성 강제 복원
-  const forceShowBrain = () => {
+  const forceShowBreast = () => {
     if (!niivueRef.current) {
       alert('NiiVue가 초기화되지 않았습니다.');
       return;
@@ -920,9 +920,9 @@ export default function NiiVueDrawingViewer({
   };
 
   // 🎨 두 캔버스 합성 함수 (GPT 제안 방식)
-  const compositeTwoCanvases = async (brainCanvas: HTMLCanvasElement, drawingCanvas: HTMLCanvasElement) => {
+  const compositeTwoCanvases = async (breastCanvas: HTMLCanvasElement, drawingCanvas: HTMLCanvasElement) => {
     console.log('=== 두 캔버스 합성 시작 ===');
-    console.log('뇌 캔버스:', { width: brainCanvas.width, height: brainCanvas.height });
+    console.log('뇌 캔버스:', { width: breastCanvas.width, height: breastCanvas.height });
     console.log('드로잉 캔버스:', { width: drawingCanvas.width, height: drawingCanvas.height });
     
     // 최신 프레임으로 강제 렌더링
@@ -931,8 +931,8 @@ export default function NiiVueDrawingViewer({
     }
     
     // 더 큰 캔버스 크기 사용
-    const width = Math.max(brainCanvas.width, drawingCanvas.width);
-    const height = Math.max(brainCanvas.height, drawingCanvas.height);
+    const width = Math.max(breastCanvas.width, drawingCanvas.width);
+    const height = Math.max(breastCanvas.height, drawingCanvas.height);
     
     // 드로잉 캔버스 크기 맞추기
     if (drawingCanvas.width !== width || drawingCanvas.height !== height) {
@@ -957,7 +957,7 @@ export default function NiiVueDrawingViewer({
     try {
       // 1단계: 뇌 영상 (배경)
       console.log('🧠 1단계: 뇌 영상 그리기...');
-      ctx.drawImage(brainCanvas, 0, 0, width, height);
+      ctx.drawImage(breastCanvas, 0, 0, width, height);
       
       // 2단계: 드로잉 (오버레이)
       console.log('🖊️ 2단계: 드로잉 오버레이...');
@@ -978,7 +978,7 @@ export default function NiiVueDrawingViewer({
       // 파일명 생성
       const now = new Date();
       const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, -5);
-      const filename = `brain_drawing_composite_${patientId}_${timestamp}.jpg`;
+      const filename = `breast_drawing_composite_${patientId}_${timestamp}.jpg`;
       
       console.log('✅ 캔버스 합성 완료:', {
         filename,
@@ -1143,7 +1143,7 @@ export default function NiiVueDrawingViewer({
           </button>
 
           <button
-            onClick={forceShowBrain}
+            onClick={forceShowBreast}
             className="px-3 py-2 bg-cyan-600 hover:bg-cyan-700 text-white text-xs rounded font-medium transition-colors"
             title="뇌 영상이 안 보일 때 가시성을 강제로 복원"
           >

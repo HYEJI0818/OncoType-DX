@@ -5,7 +5,7 @@ import { useTranslation } from '@/contexts/EnhancedTranslationContext';
 // NiiVue는 동적으로 로드하여 SSR 문제 방지
 // import { Niivue, SHOW_RENDER } from '@niivue/niivue';
 
-// 🎚️ 슬라이더 CSS 스타일 (Brain3DView와 동일)
+// 🎚️ 슬라이더 CSS 스타일 (Breast3DView와 동일)
 const sliderStyle = `
   .mpr-slice-slider::-webkit-slider-thumb {
     appearance: none;
@@ -149,7 +149,7 @@ export default function MPRViewer({
     sagittal: number | null;
   }>({ axial: null, coronal: null, sagittal: null });
   
-  // Segmentation 파일 관련 상태 (Brain3DView와 동일)
+  // Segmentation 파일 관련 상태 (Breast3DView와 동일)
   const [segmentationFiles, setSegmentationFiles] = useState<Array<{id: number, file_name: string, file_path: string, public_url?: string}>>([]);
   const [selectedSegFile, setSelectedSegFile] = useState<string | null>(null);
   const [showSegSelector, setShowSegSelector] = useState(false);
@@ -471,7 +471,7 @@ export default function MPRViewer({
         
         // vec4 오류 방지를 위한 안전한 NiiVue 인스턴스 생성
         const nv = new Niivue({
-          // 🎯 Brain3DView와 완전 동일한 설정으로 최대 부드러움 구현
+          // 🎯 Breast3DView와 완전 동일한 설정으로 최대 부드러움 구현
           show3Dcrosshair: false, // 3D 크로스헤어 비활성화 (순수 3D 뷰)
           sliceType: 4, // 3D 모드
           multiplanarShowRender: 0, // 슬라이스 완전 비활성화 (순수 3D)
@@ -485,7 +485,7 @@ export default function MPRViewer({
           logLevel: 'error',
           backColor: [0, 0, 0, 1],
           isColorbar: false,
-          isRuler: false, // 🎯 Brain3DView와 동일 - 룰러 비활성화
+          isRuler: false, // 🎯 Breast3DView와 동일 - 룰러 비활성화
           isOrientCube: true, // 방향 큐브 표시
           
           // 🚀 초부드러운 3D 모드 설정 (십자선 완전 제거)
@@ -661,7 +661,7 @@ export default function MPRViewer({
       const volumeList = [
         { 
           url: originalNiftiUrl,
-          name: 'brain.nii',
+          name: 'breast.nii',
           colormap: 'gray'
         },
         {
@@ -676,9 +676,9 @@ export default function MPRViewer({
       // 볼륨 설정
       if (nvRef.current.volumes.length >= 2) {
         // 기본 뇌 이미지 설정
-        const brain = nvRef.current.volumes[0];
-        brain.opacity = 1.0;
-        nvRef.current.setColormap(brain.id, 'gray');
+        const breast = nvRef.current.volumes[0];
+        breast.opacity = 1.0;
+        nvRef.current.setColormap(breast.id, 'gray');
         
         // 오버레이 설정
         const overlay = nvRef.current.volumes[1];
@@ -692,7 +692,7 @@ export default function MPRViewer({
         nvRef.current.updateGLVolume();
         setHasOverlay(true);
         
-        console.log('MPRViewer 오버레이 로딩 성공 - 뇌:', brain, '오버레이:', overlay);
+        console.log('MPRViewer 오버레이 로딩 성공 - 유방:', breast, '오버레이:', overlay);
         
         // 🎯 종양 데이터 분석 및 자동 슬라이스 이동
         console.log('🔍 MPRViewer 종양 분석 시작...');
@@ -736,7 +736,7 @@ export default function MPRViewer({
       
       const volumeList = [{ 
         url: originalNiftiUrl,
-        name: 'brain.nii',
+        name: 'breast.nii',
         colormap: 'gray'
       }];
       
@@ -792,7 +792,7 @@ export default function MPRViewer({
       
       safeDrawScene(nvRef.current);
       
-      const dummyFile = new File([new ArrayBuffer(0)], 'brain.nii', { type: 'application/octet-stream' });
+      const dummyFile = new File([new ArrayBuffer(0)], 'breast.nii', { type: 'application/octet-stream' });
       setFile(dummyFile);
       
       console.log('✅ MPR 뷰어: 원본 NIfTI URL 로드 성공:', originalNiftiUrl);
@@ -834,7 +834,7 @@ export default function MPRViewer({
       }
       
       const blob = new Blob([niftiImage], { type: 'application/octet-stream' });
-      const file = new File([blob], 'brain.nii', { type: 'application/octet-stream' });
+      const file = new File([blob], 'breast.nii', { type: 'application/octet-stream' });
       
       await nvRef.current.loadFromFile(file);
       
@@ -1505,7 +1505,7 @@ export default function MPRViewer({
   };
 
   // 원본 뇌 이미지만 다시 로드하는 함수 (오버레이 제거용)
-  const reloadOriginalBrain = async () => {
+  const reloadOriginalBreast = async () => {
     if (!originalNiftiUrl || !nvRef.current) {
       console.log('MPRViewer: 원본 NIfTI URL이 없거나 nvRef가 없어서 뇌 이미지 재로드를 건너뜁니다');
       return;
@@ -1518,7 +1518,7 @@ export default function MPRViewer({
       // 기본 뇌 이미지만 로드 (오버레이 없이)
       const volumeList = [{ 
         url: originalNiftiUrl,
-        name: 'brain.nii',
+        name: 'breast.nii',
         colormap: 'gray'
       }];
       
@@ -1553,7 +1553,7 @@ export default function MPRViewer({
       setTumorOverlayUrl(null);
       
       // 오버레이 제거 후 원본 뇌 이미지만 다시 로드
-      reloadOriginalBrain();
+      reloadOriginalBreast();
       
       console.log('✅ MPRViewer: Tumor 오버레이 제거 완료');
     } else {
@@ -1595,7 +1595,7 @@ export default function MPRViewer({
       } else {
         console.log('🔥 MPRViewer: tumorOverlayUrl이 null이므로 오버레이 제거');
         // tumorOverlayUrl이 null이면 오버레이 제거하고 기본 뇌만 표시
-        reloadOriginalBrain();
+        reloadOriginalBreast();
       }
     } else {
       console.log('🔥 MPRViewer: 조건 미충족 - nvRef 또는 volumes 없음');
@@ -1625,7 +1625,7 @@ export default function MPRViewer({
       const volumeList = [
         { 
           url: originalNiftiUrl,
-          name: 'brain.nii',
+          name: 'breast.nii',
           colormap: 'gray'
         },
         {
@@ -1640,9 +1640,9 @@ export default function MPRViewer({
       // 볼륨 설정
       if (nvRef.current.volumes.length >= 2) {
         // 기본 뇌 이미지 설정
-        const brain = nvRef.current.volumes[0];
-        brain.opacity = 1.0;
-        nvRef.current.setColormap(brain.id, 'gray');
+        const breast = nvRef.current.volumes[0];
+        breast.opacity = 1.0;
+        nvRef.current.setColormap(breast.id, 'gray');
         
         // Tumor 오버레이 설정
         const tumorOverlay = nvRef.current.volumes[1];
@@ -1941,7 +1941,7 @@ export default function MPRViewer({
           nvRef.current.opts.isOrientCube = true; // 방향 큐브로 방향 확인
           nvRef.current.opts.isRuler = false; // 룰러 비활성화로 성능 향상
           
-          // 🎯 무제한 자유 회전 - Brain3DView와 동일하게 초기 각도만 설정
+          // 🎯 무제한 자유 회전 - Breast3DView와 동일하게 초기 각도만 설정
           nvRef.current.setRenderAzimuthElevation(45, -10);
           
           // 🔥 완전한 360도 무제한 회전을 위한 고급 설정
@@ -1976,13 +1976,13 @@ export default function MPRViewer({
             nvRef.current.scene.volScaleMultiplier = 1.0; // 기본 스케일
           }
           
-          // 볼륨 설정 - Brain3DView와 동일
+          // 볼륨 설정 - Breast3DView와 동일
           if (nvRef.current.volumes && nvRef.current.volumes.length > 0 && nvRef.current.volumes[0]) {
             nvRef.current.volumes[0].opacity = 1.0;
             nvRef.current.updateGLVolume();
           }
           
-          console.log('✅ 3D 모드 설정 완료 (Brain3DView와 동일) - 360도 회전 가능');
+          console.log('✅ 3D 모드 설정 완료 (Breast3DView와 동일) - 360도 회전 가능');
         }
         
         // 즉시 그리기
@@ -2099,9 +2099,9 @@ export default function MPRViewer({
 
   // MPR 뷰어에서 슬라이스 위치 변경 감지 (3D 모드 제외)
   useEffect(() => {
-    // 🚀 3D 모드일 때는 Brain3DView처럼 마우스 이벤트 리스너 등록하지 않음
+    // 🚀 3D 모드일 때는 Breast3DView처럼 마우스 이벤트 리스너 등록하지 않음
     if (currentSliceType === 4) {
-      console.log('🎯 3D 모드: 마우스 이벤트 리스너 등록 건너뜀 (Brain3DView와 동일)');
+      console.log('🎯 3D 모드: 마우스 이벤트 리스너 등록 건너뜀 (Breast3DView와 동일)');
       return;
     }
     
@@ -2439,13 +2439,13 @@ export default function MPRViewer({
       if (originalNiftiUrl) {
         const volumeList = [{ 
           url: originalNiftiUrl,
-          name: 'brain.nii',
+          name: 'breast.nii',
           colormap: currentColormap
         }];
         await coronalNv.loadVolumes(volumeList);
       } else if (niftiImage) {
         const blob = new Blob([niftiImage], { type: 'application/octet-stream' });
-        const file = new File([blob], 'brain.nii', { type: 'application/octet-stream' });
+        const file = new File([blob], 'breast.nii', { type: 'application/octet-stream' });
         await coronalNv.loadFromFile(file);
       }
       
@@ -3310,13 +3310,13 @@ Oblique
                 
                 // 성능 최적화를 위해 디버그 로그 제거
                 
-                // 🚀 3D 모드일 때는 Brain3DView처럼 완전히 NiiVue에게 맡김
+                // 🚀 3D 모드일 때는 Breast3DView처럼 완전히 NiiVue에게 맡김
                 if (currentSliceType === 4) {
                   // 3D 모드에서는 NiiVue 기본 동작만 허용하되 이벤트는 차단
                   return;
                 }
                 
-                // 🔧 작업중 모드일 때 클리핑 방식 슬라이스 조작 (Brain3DView 방식)
+                // 🔧 작업중 모드일 때 클리핑 방식 슬라이스 조작 (Breast3DView 방식)
                 if (isWorkingMode) {
                   // 이미 위에서 preventDefault 처리됨
                   
@@ -3324,7 +3324,7 @@ Oblique
                   const newPos = Math.max(0.01, Math.min(0.99, workingSlicePos + delta));
                   setWorkingSlicePos(newPos);
                   
-                  // Brain3DView와 동일한 클리핑 방식 (Coronal 방향)
+                  // Breast3DView와 동일한 클리핑 방식 (Coronal 방향)
                   const clipPlane = [0, 1, 0, newPos - 0.5]; // Y축 클리핑 (앞뒤로 자르기)
                   nvRef.current.setClipPlane(clipPlane);
                   

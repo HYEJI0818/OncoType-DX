@@ -277,7 +277,7 @@ export default function Breast3DView({ imageUrl, niftiHeader, niftiImage, origin
     const loadData = async () => {
       try {
         if (originalNiftiUrl && nvRef.current) {
-          await load3DBrain();
+          await load3DBreast();
         } else if (niftiImage && nvRef.current) {
           await loadFromBuffer();
         } else if (nvRef.current) {
@@ -288,12 +288,12 @@ export default function Breast3DView({ imageUrl, niftiHeader, niftiImage, origin
             try {
               nvRef.current.drawScene();
             } catch (error) {
-              console.warn('Brain3DView: drawScene 오류 (볼륨 없음):', error);
+              console.warn('Breast3DView: drawScene 오류 (볼륨 없음):', error);
             }
           }
         }
       } catch (error) {
-        console.error('Brain3DView: 데이터 로드 오류:', error);
+        console.error('Breast3DView: 데이터 로드 오류:', error);
       }
     };
     loadData();
@@ -304,7 +304,7 @@ export default function Breast3DView({ imageUrl, niftiHeader, niftiImage, origin
 
 
   // 3D 뇌 로드 함수
-  const load3DBrain = async () => {
+  const load3DBreast = async () => {
     if (!nvRef.current || !originalNiftiUrl) return;
     
     try {
@@ -347,7 +347,7 @@ export default function Breast3DView({ imageUrl, niftiHeader, niftiImage, origin
             nvRef.current.updateGLVolume();
           }
         } catch (renderError) {
-          console.warn('Brain3DView: 3D 렌더링 설정 오류:', renderError);
+          console.warn('Breast3DView: 3D 렌더링 설정 오류:', renderError);
         }
         
         // 전역 segmentation 파일이 있으면 오버레이 추가
@@ -357,7 +357,7 @@ export default function Breast3DView({ imageUrl, niftiHeader, niftiImage, origin
         
         // Tumor 오버레이가 있으면 추가
         if (tumorOverlayUrl) {
-          console.log('🔥 Brain3DView: 초기화 시 tumorOverlayUrl 발견, 로드 시도');
+          console.log('🔥 Breast3DView: 초기화 시 tumorOverlayUrl 발견, 로드 시도');
           await loadTumorOverlay();
         }
         
@@ -509,12 +509,12 @@ export default function Breast3DView({ imageUrl, niftiHeader, niftiImage, origin
   // Tumor 오버레이 로딩 함수
   const loadTumorOverlay = async () => {
     if (!nvRef.current || !tumorOverlayUrl || !originalNiftiUrl) {
-      console.log('Brain3DView: Tumor 오버레이 로딩 조건 미충족');
+      console.log('Breast3DView: Tumor 오버레이 로딩 조건 미충족');
       return;
     }
     
     try {
-      console.log('Brain3DView: Tumor 오버레이 로딩 시작:', tumorOverlayUrl);
+      console.log('Breast3DView: Tumor 오버레이 로딩 시작:', tumorOverlayUrl);
       
       // 기존 오버레이가 있으면 제거 (첫 번째 볼륨은 기본 이미지이므로 보존)
       if (nvRef.current.volumes.length > 1) {
@@ -568,12 +568,12 @@ export default function Breast3DView({ imageUrl, niftiHeader, niftiImage, origin
       nvRef.current.drawScene();
       
     } catch (error) {
-      console.error('Brain3DView Tumor 오버레이 로딩 실패:', error);
+      console.error('Breast3DView Tumor 오버레이 로딩 실패:', error);
     }
   };
 
   // 기본 뇌 이미지만 다시 로드하는 함수 (오버레이 제거용)
-  const reloadBrainOnly = async () => {
+  const reloadBreastOnly = async () => {
     if (!originalNiftiUrl || originalNiftiUrl.trim() === '' || !nvRef.current) {
       console.log('3D 뷰: 원본 NIfTI URL이 없거나 nvRef가 없어서 뇌 이미지 재로드를 건너뜁니다');
       return;
@@ -581,7 +581,7 @@ export default function Breast3DView({ imageUrl, niftiHeader, niftiImage, origin
     
     const volumeList = [{ 
       url: originalNiftiUrl,
-      name: 'brain.nii',
+      name: 'breast.nii',
       colormap: 'gray'
     }];
     
@@ -620,30 +620,30 @@ export default function Breast3DView({ imageUrl, niftiHeader, niftiImage, origin
         loadSegmentationOverlay();
       } else {
         // 오버레이 제거 - 기본 뇌 이미지만 다시 로드
-        reloadBrainOnly();
+        reloadBreastOnly();
       }
     }
   }, [globalSelectedSegFile, originalNiftiUrl]);
 
   // tumorOverlayUrl이 변경될 때 Tumor 오버레이 로드/제거
   useEffect(() => {
-    console.log('🔥 Brain3DView: tumorOverlayUrl 변경됨:', tumorOverlayUrl);
-    console.log('🔥 Brain3DView: nvRef.current:', !!nvRef.current);
-    console.log('🔥 Brain3DView: volumes.length:', nvRef.current?.volumes?.length || 0);
-    console.log('🔥 Brain3DView: originalNiftiUrl:', originalNiftiUrl);
+    console.log('🔥 Breast3DView: tumorOverlayUrl 변경됨:', tumorOverlayUrl);
+    console.log('🔥 Breast3DView: nvRef.current:', !!nvRef.current);
+    console.log('🔥 Breast3DView: volumes.length:', nvRef.current?.volumes?.length || 0);
+    console.log('🔥 Breast3DView: originalNiftiUrl:', originalNiftiUrl);
     
     // 더 엄격한 null 체크
     if (nvRef.current && nvRef.current.volumes && nvRef.current.volumes.length > 0) {
       if (tumorOverlayUrl) {
-        console.log('🔥 Brain3DView: loadTumorOverlay 호출');
+        console.log('🔥 Breast3DView: loadTumorOverlay 호출');
         loadTumorOverlay();
       } else {
-        console.log('🔥 Brain3DView: tumorOverlayUrl이 null이므로 오버레이 제거');
+        console.log('🔥 Breast3DView: tumorOverlayUrl이 null이므로 오버레이 제거');
         // tumorOverlayUrl이 null이면 오버레이 제거하고 기본 뇌만 표시
-        reloadBrainOnly();
+        reloadBreastOnly();
       }
     } else {
-      console.log('🔥 Brain3DView: 조건 미충족 - nvRef 또는 volumes 없음');
+      console.log('🔥 Breast3DView: 조건 미충족 - nvRef 또는 volumes 없음');
     }
   }, [tumorOverlayUrl, originalNiftiUrl]);
 

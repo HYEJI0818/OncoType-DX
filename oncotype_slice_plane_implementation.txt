@@ -3,7 +3,7 @@
 ====================================================================
 
 📋 개요:
-- Brain3DView의 "3D 단면" 기능을 MPRViewer "작업중" 모드로 이식
+- Breast3DView의 "3D 단면" 기능을 MPRViewer "작업중" 모드로 이식
 - 3D 뇌 볼륨 + 보라색 클리핑 평면 + 마우스 휠 인터랙션
 - setClipPlane() 방식 사용 (crosshairPos 방식 아님)
 
@@ -18,7 +18,7 @@ const [workingSlicePos, setWorkingSlicePos] = useState(0.5); // 작업중 모드
 🎯 2. 보라색 슬라이스 평면 활성화 함수
 ====================================================================
 
-// 작업중 - 3D + 보라색 슬라이스 평면 기능 (Brain3DView 방식)
+// 작업중 - 3D + 보라색 슬라이스 평면 기능 (Breast3DView 방식)
 const setView3DSliceWithClipping = () => {
   setIs3DSliceMode(false); // 다른 모드 해제
   setIsWorkingMode(true); // 작업중 모드 활성화
@@ -29,10 +29,10 @@ const setView3DSliceWithClipping = () => {
     // 적절한 3D 시점 설정 (약간 기울어진 각도로 단면이 잘 보이도록)
     nvRef.current.setRenderAzimuthElevation(45, 15);
     
-    // Brain3DView와 동일한 방식으로 클리핑 평면 설정
+    // Breast3DView와 동일한 방식으로 클리핑 평면 설정
     setTimeout(() => {
       if (nvRef.current) {
-        // Coronal 방향으로 중간 지점에서 클리핑 (Brain3DView와 동일)
+        // Coronal 방향으로 중간 지점에서 클리핑 (Breast3DView와 동일)
         const clipPlane = [0, 1, 0, 0]; // Y축으로 중간 지점에서 자르기
         nvRef.current.setClipPlane(clipPlane);
         nvRef.current.drawScene();
@@ -51,7 +51,7 @@ const setView3DSliceWithClipping = () => {
   ref={canvasRef}
   className="w-full h-full"
   onWheel={(e) => {
-    // 작업중 모드일 때만 슬라이스 조작 가능 (Brain3DView 방식)
+    // 작업중 모드일 때만 슬라이스 조작 가능 (Breast3DView 방식)
     if (isWorkingMode && nvRef.current) {
       e.preventDefault();
       e.stopPropagation();
@@ -60,7 +60,7 @@ const setView3DSliceWithClipping = () => {
       const newPos = Math.max(0.01, Math.min(0.99, workingSlicePos + delta));
       setWorkingSlicePos(newPos);
       
-      // Brain3DView와 동일한 클리핑 방식 (Coronal 방향)
+      // Breast3DView와 동일한 클리핑 방식 (Coronal 방향)
       const clipPlane = [0, 1, 0, newPos - 0.5]; // Y축 클리핑 (앞뒤로 자르기)
       nvRef.current.setClipPlane(clipPlane);
       nvRef.current.drawScene();
@@ -107,7 +107,7 @@ const setView3DSliceWithClipping = () => {
 
 ✅ 성공 요인:
 1. setClipPlane() 사용 (crosshairPos 방식 아님)
-2. Brain3DView의 clipDepth 방식 적용: newPos - 0.5
+2. Breast3DView의 clipDepth 방식 적용: newPos - 0.5
 3. setSliceType(4) 3D 렌더 모드
 4. setTimeout으로 초기 클리핑 평면 설정 지연
 5. e.preventDefault() + e.stopPropagation()으로 기본 동작 차단

@@ -7,7 +7,7 @@ import { useEffect, useRef, useState, useId, useCallback } from 'react';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type NiivueInstance = any;
 
-// 슬라이더 CSS 스타일 (Brain3DView와 동일)
+// 슬라이더 CSS 스타일 (Breast3DView와 동일)
 const sliderStyle = `
   .niivue-slice-slider::-webkit-slider-thumb {
     appearance: none;
@@ -79,7 +79,7 @@ export default function NiiVueSliceViewer({
   const [currentSlice, setCurrentSlice] = useState(0);
   const [maxSlices, setMaxSlices] = useState(0);
   
-  // Zoom 기능을 위한 상태 (Brain3DView와 완전히 동일)
+  // Zoom 기능을 위한 상태 (Breast3DView와 완전히 동일)
   const [zoomLevel, setZoomLevel] = useState(50); // 50%로 시작
   const [isZoomDragging, setIsZoomDragging] = useState(false);
   
@@ -712,7 +712,7 @@ export default function NiiVueSliceViewer({
       // 기본 뇌 이미지 로드
       const volumeList = [{ 
         url: originalNiftiUrl,
-        name: 'brain.nii',
+        name: 'breast.nii',
         colormap: 'gray'
       }];
       
@@ -777,7 +777,7 @@ export default function NiiVueSliceViewer({
         }, 200);
       }
       
-      setFile(new File([new ArrayBuffer(0)], 'brain.nii'));
+      setFile(new File([new ArrayBuffer(0)], 'breast.nii'));
       
     } catch (error) {
       console.error('NiiVue 슬라이스 뷰어 로드 실패:', error);
@@ -838,7 +838,7 @@ export default function NiiVueSliceViewer({
         const nvImage = {
           hdr: niftiHeader,
           img: processBuffer,
-          name: 'brain.nii',
+          name: 'breast.nii',
           id: 0,
           colormap: 'gray',
           opacity: 1.0,
@@ -859,7 +859,7 @@ export default function NiiVueSliceViewer({
         
         // 헤더가 없는 경우 Blob으로 파일 생성 시도
         const blob = new Blob([processBuffer], { type: 'application/octet-stream' });
-        const file = new File([blob], 'brain.nii');
+        const file = new File([blob], 'breast.nii');
         
         await nvRef.current.loadFromFile(file);
       }
@@ -943,7 +943,7 @@ export default function NiiVueSliceViewer({
       const volumeList = [
         { 
           url: originalNiftiUrl,
-          name: 'brain.nii',
+          name: 'breast.nii',
           colormap: 'gray'
         },
         {
@@ -958,9 +958,9 @@ export default function NiiVueSliceViewer({
       // 볼륨 설정
       if (nvRef.current.volumes.length >= 2) {
         // 기본 뇌 이미지 설정
-        const brain = nvRef.current.volumes[0];
-        brain.opacity = 1.0;
-        nvRef.current.setColormap(brain.id, 'gray');
+        const breast = nvRef.current.volumes[0];
+        breast.opacity = 1.0;
+        nvRef.current.setColormap(breast.id, 'gray');
         
         // 오버레이 설정
         const overlay = nvRef.current.volumes[1];
@@ -1043,7 +1043,7 @@ export default function NiiVueSliceViewer({
       const volumeList = [
         { 
           url: originalNiftiUrl,
-          name: 'brain.nii',
+          name: 'breast.nii',
           colormap: 'gray'
         },
         {
@@ -1058,9 +1058,9 @@ export default function NiiVueSliceViewer({
       // 볼륨 설정
       if (nvRef.current.volumes.length >= 2) {
         // 기본 뇌 이미지 설정
-        const brain = nvRef.current.volumes[0];
-        brain.opacity = 1.0;
-        nvRef.current.setColormap(brain.id, 'gray');
+        const breast = nvRef.current.volumes[0];
+        breast.opacity = 1.0;
+        nvRef.current.setColormap(breast.id, 'gray');
         
         // Tumor 오버레이 설정
         const tumorOverlay = nvRef.current.volumes[1];
@@ -1122,14 +1122,14 @@ export default function NiiVueSliceViewer({
         loadSegmentationOverlay();
       } else {
         // 오버레이 제거 - 기본 뇌 이미지만 다시 로드
-        const reloadBrainOnly = async () => {
+        const reloadBreastOnly = async () => {
           if (!originalNiftiUrl || originalNiftiUrl.trim() === '') {
             return;
           }
           
           const volumeList = [{ 
             url: originalNiftiUrl,
-            name: 'brain.nii',
+            name: 'breast.nii',
             colormap: 'gray'
           }];
           
@@ -1171,7 +1171,7 @@ export default function NiiVueSliceViewer({
           }
         };
         
-        reloadBrainOnly();
+        reloadBreastOnly();
       }
     }
   }, [globalSelectedSegFile, originalNiftiUrl, plane]);
@@ -1257,7 +1257,7 @@ export default function NiiVueSliceViewer({
   };
 
 
-  // 줌 슬라이더 드래그 핸들러들 (Brain3DView와 완전히 동일)
+  // 줌 슬라이더 드래그 핸들러들 (Breast3DView와 완전히 동일)
   const sliderRef = useRef<HTMLDivElement>(null);
 
   const handleZoomMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -1306,7 +1306,7 @@ export default function NiiVueSliceViewer({
     handleZoomChange(newZoom);
   };
 
-  // 전역 마우스 이벤트 (드래그 중일 때) - Brain3DView와 완전히 동일
+  // 전역 마우스 이벤트 (드래그 중일 때) - Breast3DView와 완전히 동일
   useEffect(() => {
     if (!isZoomDragging) return;
 

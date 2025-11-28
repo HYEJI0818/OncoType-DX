@@ -1057,11 +1057,11 @@ export default function NIfTISliceViewer({
     }
   }, [extractSlice]);
 
-  // 3D Brain 렌더링 함수
-  const render3DBrain = useCallback((canvas: HTMLCanvasElement) => {
+  // 3D Breast 렌더링 함수
+  const render3DBreast = useCallback((canvas: HTMLCanvasElement) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) {
-      console.log('3D Brain: Canvas context 없음');
+      console.log('3D Breast: Canvas context 없음');
       return;
     }
     
@@ -1070,7 +1070,7 @@ export default function NIfTISliceViewer({
     canvas.height = containerSize;
     
     if (!niftiHeader || !niftiImage) {
-      console.log('3D Brain: NIfTI 데이터 없음');
+      console.log('3D Breast: NIfTI 데이터 없음');
       // 데이터가 없을 때 placeholder 표시
       ctx.fillStyle = '#374151';
       ctx.fillRect(0, 0, containerSize, containerSize);
@@ -1082,7 +1082,7 @@ export default function NIfTISliceViewer({
       return;
     }
 
-    console.log('3D Brain 렌더링 시작', { 
+    console.log('3D Breast 렌더링 시작', { 
       canvasSize: { width: canvas.width, height: canvas.height },
       headerDims: niftiHeader.dims 
     });
@@ -1160,11 +1160,11 @@ export default function NIfTISliceViewer({
     }
     
     ctx.putImageData(imageData, 0, 0);
-    console.log('3D Brain 렌더링 완료 (중간 슬라이스 방식)');
+    console.log('3D Breast 렌더링 완료 (중간 슬라이스 방식)');
   }, [niftiHeader, niftiImage]);
 
-  // 3D Brain Canvas ref 추가
-  const brain3DCanvasRef = useRef<HTMLCanvasElement>(null);
+  // 3D Breast Canvas ref 추가
+  const breast3DCanvasRef = useRef<HTMLCanvasElement>(null);
 
   // 모든 슬라이스 업데이트
   const updateAllSlices = useCallback(() => {
@@ -1364,7 +1364,7 @@ export default function NIfTISliceViewer({
         
       </div>
 
-      {/* 4개 패널 (고정 순서: Axial, Coronal, Sagittal, 3D Brain) */}
+      {/* 4개 패널 (고정 순서: Axial, Coronal, Sagittal, 3D Breast) */}
       <div className="space-y-3">
         {/* 1. T1 */}
         <div 

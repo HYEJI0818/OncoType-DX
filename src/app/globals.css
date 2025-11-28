@@ -151,8 +151,8 @@ input[type="range"]::-moz-range-thumb:hover {
   border-color: #ea580c;
 }
 
-/* Brain3D 뷰어 슬라이더 스타일 */
-.brain3d-slider::-webkit-slider-thumb {
+/* Breast3D 뷰어 슬라이더 스타일 */
+.breast3d-slider::-webkit-slider-thumb {
   appearance: none;
   width: 16px;
   height: 16px;
@@ -163,7 +163,7 @@ input[type="range"]::-moz-range-thumb:hover {
   box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
-.brain3d-slider::-moz-range-thumb {
+.breast3d-slider::-moz-range-thumb {
   width: 16px;
   height: 16px;
   border-radius: 50%;

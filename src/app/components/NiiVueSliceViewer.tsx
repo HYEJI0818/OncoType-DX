@@ -7,7 +7,7 @@ import { useEffect, useRef, useState, useId, useCallback } from 'react';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type NiivueInstance = any;
 
-// 슬라이더 CSS 스타일 (Brain3DView와 동일)
+// 슬라이더 CSS 스타일 (Breast3DView와 동일)
 const sliderStyle = `
   .niivue-slice-slider::-webkit-slider-thumb {
     appearance: none;
@@ -81,7 +81,7 @@ export default function NiiVueSliceViewer({
   const [currentSlice, setCurrentSlice] = useState(0);
   const [maxSlices, setMaxSlices] = useState(0);
   
-  // Zoom 기능을 위한 상태 (Brain3DView와 완전히 동일)
+  // Zoom 기능을 위한 상태 (Breast3DView와 완전히 동일)
   const [zoomLevel, setZoomLevel] = useState(50); // 50%로 시작
   const [isZoomDragging, setIsZoomDragging] = useState(false);
   
@@ -131,7 +131,7 @@ export default function NiiVueSliceViewer({
   }, [plane, currentSlice, maxSlices]);
 
   // 확대/축소 핸들러 (useEffect보다 먼저 선언)
-  const handleZoomChange = (newZoom: number) => {
+  const handleZoomChange = useCallback((newZoom: number) => {
     console.log(`🎯 ${plane} handleZoomChange 호출:`, {
       이전줌: zoomLevel,
       새줌: newZoom,
@@ -171,7 +171,7 @@ export default function NiiVueSliceViewer({
     } else {
       console.warn(`⚠️ ${plane} 줌 적용 불가: nvRef=${!!nvRef.current}, canvas=${!!canvasRef.current}`);
     }
-  };
+  }, [plane, zoomLevel]);
 
   // 마우스 휠 이벤트 리스너 (passive 문제 해결)
   useEffect(() => {
@@ -350,7 +350,10 @@ export default function NiiVueSliceViewer({
           return;
       }
 
-      console.log(`${plane} 평면에서 ${sliceCount}개 슬라이스 분석 중...`);
+      // 개발 환경에서만 로그 출력
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`${plane} 평면에서 ${sliceCount}개 슬라이스 분석 중...`);
+      }
 
       // 각 슬라이스별 종양 픽셀 수 계산
       const sliceTumorCounts: number[] = [];
@@ -396,8 +399,11 @@ export default function NiiVueSliceViewer({
         sliceTumorCounts.push(tumorPixels);
       }
 
-      console.log('슬라이스별 종양 픽셀 수:', sliceTumorCounts);
-      console.log('총 종양 픽셀 수:', totalTumorPixels);
+      // 개발 환경에서만 로그 출력
+      if (process.env.NODE_ENV === 'development') {
+        console.log('슬라이스별 종양 픽셀 수:', sliceTumorCounts);
+        console.log('총 종양 픽셀 수:', totalTumorPixels);
+      }
 
       // 종양이 전혀 없는 경우 처리
       if (totalTumorPixels === 0) {
@@ -441,14 +447,20 @@ export default function NiiVueSliceViewer({
           sliceTumorCounts[slice] = tumorPixels;
         }
         
-        console.log('재시도 후 슬라이스별 종양 픽셀 수:', sliceTumorCounts);
+        // 개발 환경에서만 로그 출력
+        if (process.env.NODE_ENV === 'development') {
+          console.log('재시도 후 슬라이스별 종양 픽셀 수:', sliceTumorCounts);
+        }
       }
 
       // 가장 많은 종양 픽셀을 가진 슬라이스 찾기
       const maxTumorPixels = Math.max(...sliceTumorCounts);
       const bestSlice = sliceTumorCounts.indexOf(maxTumorPixels);
       
-      console.log(`✅ 최적 슬라이스: ${bestSlice} (종양 픽셀: ${maxTumorPixels}개)`);
+      // 개발 환경에서만 로그 출력
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`✅ 최적 슬라이스: ${bestSlice} (종양 픽셀: ${maxTumorPixels}개)`);
+      }
 
       // 상태 업데이트
       setTumorSliceData(sliceTumorCounts);
@@ -456,7 +468,10 @@ export default function NiiVueSliceViewer({
 
       // 자동으로 최적 슬라이스로 이동 (종양이 있는 경우에만)
       if (maxTumorPixels > 0 && nv && nv.scene) {
-        console.log(`🎯 슬라이스 ${bestSlice}로 자동 이동...`);
+        // 개발 환경에서만 로그 출력
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`🎯 슬라이스 ${bestSlice}로 자동 이동...`);
+        }
         
         // 슬라이스 위치를 0-1 범위로 정규화
         const normalizedPosition = bestSlice / Math.max(1, sliceCount - 1);
@@ -483,9 +498,12 @@ export default function NiiVueSliceViewer({
           // 화면 업데이트
           nv.updateGLVolume();
           
-          console.log(`✅ 슬라이스 이동 완료: ${bestSlice} (정규화 위치: ${normalizedPosition})`);
+          // 개발 환경에서만 로그 출력
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`✅ 슬라이스 이동 완료: ${bestSlice} (정규화 위치: ${normalizedPosition})`);
+          }
         }
-      } else if (maxTumorPixels === 0) {
+      } else if (maxTumorPixels === 0 && process.env.NODE_ENV === 'development') {
         console.log('⚠️ 종양이 발견되지 않아 자동 이동하지 않습니다.');
       }
 
@@ -598,7 +616,10 @@ export default function NiiVueSliceViewer({
             case 'sagittal': sliceType = 2; break; // 추정: Sagittal = 2
           }
           
-          console.log(`🎯 ${plane} 뷰어 (초기화): 슬라이스 타입 ${sliceType}으로 강제 설정`);
+          // 개발 환경에서만 로그 출력
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`🎯 ${plane} 뷰어 (초기화): 슬라이스 타입 ${sliceType}으로 강제 설정`);
+          }
           
           // 슬라이스 타입 여러 번 적용 (확실히 고정)
           nv.setSliceType(sliceType);
@@ -606,7 +627,10 @@ export default function NiiVueSliceViewer({
           
           // 방향 고정 완료
           
-          console.log(`✅ ${plane} 뷰어 (초기화): 해부학적 방향 고정 완료 (sliceType: ${sliceType})`);
+          // 개발 환경에서만 로그 출력
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`✅ ${plane} 뷰어 (초기화): 해부학적 방향 고정 완료 (sliceType: ${sliceType})`);
+          }
           
           // 초기화 시에도 즉시 화면 업데이트
           nv.updateGLVolume();
@@ -658,7 +682,7 @@ export default function NiiVueSliceViewer({
       }
     };
     loadData();
-  }, [originalNiftiUrl, niftiImage]);
+  }, [originalNiftiUrl, niftiImage, loadFromOriginalUrl, loadFromBuffer]);
 
   // 슬라이스 타입 설정 (plane에 따라) - 최적화된 버전
   useEffect(() => {
@@ -704,7 +728,7 @@ export default function NiiVueSliceViewer({
   // useEffect 제거
 
   // 원본 NIfTI URL에서 로드
-  const loadFromOriginalUrl = async () => {
+  const loadFromOriginalUrl = useCallback(async () => {
     if (!nvRef.current || !originalNiftiUrl) return;
     
     try {
@@ -714,7 +738,7 @@ export default function NiiVueSliceViewer({
       // 기본 뇌 이미지 로드
       const volumeList = [{ 
         url: originalNiftiUrl,
-        name: 'brain.nii',
+        name: 'breast.nii',
         colormap: 'gray'
       }];
       
@@ -729,7 +753,10 @@ export default function NiiVueSliceViewer({
           case 'sagittal': sliceType = 2; break; // 추정: Sagittal = 2
         }
         
-        console.log(`🎯 ${plane} 뷰어 (URL 로드): 슬라이스 타입 ${sliceType}으로 강제 설정`);
+        // 개발 환경에서만 로그 출력
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`🎯 ${plane} 뷰어 (URL 로드): 슬라이스 타입 ${sliceType}으로 강제 설정`);
+        }
         
         try {
           // 슬라이스 타입 여러 번 적용 (확실히 고정)
@@ -739,7 +766,10 @@ export default function NiiVueSliceViewer({
           
           // 방향 고정 완료
           
-          console.log(`✅ ${plane} 뷰어 (URL 로드): 해부학적 방향 고정 완료 (sliceType: ${sliceType})`);
+          // 개발 환경에서만 로그 출력
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`✅ ${plane} 뷰어 (URL 로드): 해부학적 방향 고정 완료 (sliceType: ${sliceType})`);
+          }
           
           // 즉시 화면 업데이트 (방향 즉시 반영)
           nvRef.current.updateGLVolume();
@@ -763,7 +793,10 @@ export default function NiiVueSliceViewer({
           
           // Tumor 오버레이가 있으면 추가
           if (tumorOverlayUrl) {
-            console.log(`🔥 ${plane} NiiVueSliceViewer: 초기화 시 tumorOverlayUrl 발견, 로드 시도`);
+            // 개발 환경에서만 로그 출력
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`🔥 ${plane} NiiVueSliceViewer: 초기화 시 tumorOverlayUrl 발견, 로드 시도`);
+            }
             await loadTumorOverlay();
           }
           
@@ -779,7 +812,7 @@ export default function NiiVueSliceViewer({
         }, 200);
       }
       
-      setFile(new File([new ArrayBuffer(0)], 'brain.nii'));
+      setFile(new File([new ArrayBuffer(0)], 'breast.nii'));
       
     } catch (error) {
       console.error('NiiVue 슬라이스 뷰어 로드 실패:', error);
@@ -787,21 +820,24 @@ export default function NiiVueSliceViewer({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [originalNiftiUrl, plane, globalSelectedSegFile, tumorOverlayUrl]);
 
   // ArrayBuffer에서 로드
-  const loadFromBuffer = async () => {
+  const loadFromBuffer = useCallback(async () => {
     if (!nvRef.current || !niftiImage) return;
     
     try {
       setIsLoading(true);
       setError(null);
       
-      console.log('NiiVueSliceViewer: ArrayBuffer에서 로드 시작', {
-        niftiImageType: typeof niftiImage,
-        niftiImageLength: niftiImage.byteLength,
-        isArrayBuffer: niftiImage instanceof ArrayBuffer
-      });
+      // 개발 환경에서만 로그 출력
+      if (process.env.NODE_ENV === 'development') {
+        console.log('NiiVueSliceViewer: ArrayBuffer에서 로드 시작', {
+          niftiImageType: typeof niftiImage,
+          niftiImageLength: niftiImage.byteLength,
+          isArrayBuffer: niftiImage instanceof ArrayBuffer
+        });
+      }
       
       // ArrayBuffer 유효성 검사
       if (!niftiImage || niftiImage.byteLength === 0) {
@@ -834,13 +870,16 @@ export default function NiiVueSliceViewer({
       
       // 파싱된 이미지 데이터를 NiiVue가 이해할 수 있는 형태로 변환
       if (niftiHeader) {
-        console.log('헤더 정보와 함께 NiiVue 볼륨 생성');
+        // 개발 환경에서만 로그 출력
+        if (process.env.NODE_ENV === 'development') {
+          console.log('헤더 정보와 함께 NiiVue 볼륨 생성');
+        }
         
         // NiiVue의 NVImage 형태로 볼륨 생성
         const nvImage = {
           hdr: niftiHeader,
           img: processBuffer,
-          name: 'brain.nii',
+          name: 'breast.nii',
           id: 0,
           colormap: 'gray',
           opacity: 1.0,
@@ -854,14 +893,17 @@ export default function NiiVueSliceViewer({
         nvRef.current.updateGLVolume();
         nvRef.current.drawScene();
         
-        console.log('NiiVue 볼륨 생성 완료:', nvRef.current.volumes.length);
+        // 개발 환경에서만 로그 출력
+        if (process.env.NODE_ENV === 'development') {
+          console.log('NiiVue 볼륨 생성 완료:', nvRef.current.volumes.length);
+        }
         
       } else {
         console.log('헤더가 없어서 Blob으로 파일 생성 시도');
         
         // 헤더가 없는 경우 Blob으로 파일 생성 시도
         const blob = new Blob([processBuffer], { type: 'application/octet-stream' });
-        const file = new File([blob], 'brain.nii');
+        const file = new File([blob], 'breast.nii');
         
         await nvRef.current.loadFromFile(file);
       }
@@ -875,7 +917,10 @@ export default function NiiVueSliceViewer({
           case 'sagittal': sliceType = 2; break; // 추정: Sagittal = 2
         }
         
-        console.log(`🎯 ${plane} 뷰어 (Buffer 로드): 슬라이스 타입 ${sliceType}으로 강제 설정`);
+        // 개발 환경에서만 로그 출력
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`🎯 ${plane} 뷰어 (Buffer 로드): 슬라이스 타입 ${sliceType}으로 강제 설정`);
+        }
         
         // 슬라이스 타입 여러 번 적용 (확실히 고정)
         nvRef.current.setSliceType(sliceType);
@@ -884,7 +929,10 @@ export default function NiiVueSliceViewer({
         
         // 방향 고정 완료
         
-        console.log(`✅ ${plane} 뷰어 (Buffer 로드): 해부학적 방향 고정 완료 (sliceType: ${sliceType})`);
+        // 개발 환경에서만 로그 출력
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`✅ ${plane} 뷰어 (Buffer 로드): 해부학적 방향 고정 완료 (sliceType: ${sliceType})`);
+        }
         
         // 즉시 화면 업데이트 (방향 즉시 반영)
         nvRef.current.updateGLVolume();
@@ -919,16 +967,19 @@ export default function NiiVueSliceViewer({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [niftiImage, niftiHeader, plane]);
 
   // Segmentation 오버레이 로딩 함수
-  const loadSegmentationOverlay = async () => {
+  const loadSegmentationOverlay = useCallback(async () => {
     if (!nvRef.current || !globalSelectedSegFile || globalSelectedSegFile.trim() === '' || nvRef.current.volumes.length === 0) {
       return;
     }
     
     try {
-      console.log('NiiVue 슬라이스 뷰어에서 오버레이 로딩 시작:', globalSelectedSegFile);
+      // 개발 환경에서만 로그 출력
+      if (process.env.NODE_ENV === 'development') {
+        console.log('NiiVue 슬라이스 뷰어에서 오버레이 로딩 시작:', globalSelectedSegFile);
+      }
       
       // URL 유효성 추가 검증
       if (!originalNiftiUrl || originalNiftiUrl.trim() === '') {
@@ -945,7 +996,7 @@ export default function NiiVueSliceViewer({
       const volumeList = [
         { 
           url: originalNiftiUrl,
-          name: 'brain.nii',
+          name: 'breast.nii',
           colormap: 'gray'
         },
         {
@@ -960,9 +1011,9 @@ export default function NiiVueSliceViewer({
       // 볼륨 설정
       if (nvRef.current.volumes.length >= 2) {
         // 기본 뇌 이미지 설정
-        const brain = nvRef.current.volumes[0];
-        brain.opacity = 1.0;
-        nvRef.current.setColormap(brain.id, 'gray');
+        const breast = nvRef.current.volumes[0];
+        breast.opacity = 1.0;
+        nvRef.current.setColormap(breast.id, 'gray');
         
         // 오버레이 설정
         const overlay = nvRef.current.volumes[1];
@@ -976,10 +1027,13 @@ export default function NiiVueSliceViewer({
         nvRef.current.updateGLVolume();
         setHasOverlay(true);
         
-        console.log('NiiVue 슬라이스 뷰어 오버레이 로딩 성공');
+        // 개발 환경에서만 로그 출력
+        if (process.env.NODE_ENV === 'development') {
+          console.log('NiiVue 슬라이스 뷰어 오버레이 로딩 성공');
+          console.log('🔍 종양 분석 시작...');
+        }
         
         // 🎯 종양 데이터 분석 및 자동 슬라이스 이동
-        console.log('🔍 종양 분석 시작...');
         await analyzeTumorData(nvRef.current, overlay);
       }
       
@@ -991,7 +1045,10 @@ export default function NiiVueSliceViewer({
         case 'sagittal': sliceType = 2; break; // Sagittal - 시상 단면 (좌우)
       }
       
-      console.log(`🎯 ${plane} 뷰어: 슬라이스 타입 ${sliceType}으로 강제 설정`);
+      // 개발 환경에서만 로그 출력
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`🎯 ${plane} 뷰어: 슬라이스 타입 ${sliceType}으로 강제 설정`);
+      }
       
       // 슬라이스 타입 여러 번 적용 (확실히 고정)
       nvRef.current.setSliceType(sliceType);
@@ -1000,7 +1057,10 @@ export default function NiiVueSliceViewer({
       
       // 방향 고정 완료
       
-      console.log(`✅ ${plane} 뷰어: 해부학적 방향 고정 완료 (sliceType: ${sliceType})`)
+      // 개발 환경에서만 로그 출력
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`✅ ${plane} 뷰어: 해부학적 방향 고정 완료 (sliceType: ${sliceType})`);
+      }
       
       // 즉시 화면 업데이트 (방향 즉시 반영)
       nvRef.current.updateGLVolume();
@@ -1019,16 +1079,19 @@ export default function NiiVueSliceViewer({
     } catch (error) {
       console.error('NiiVue 슬라이스 뷰어 오버레이 로딩 실패:', error);
     }
-  };
+  }, [globalSelectedSegFile, originalNiftiUrl, plane]);
 
   // Tumor 오버레이 로딩 함수
-  const loadTumorOverlay = async () => {
+  const loadTumorOverlay = useCallback(async () => {
     if (!nvRef.current || !tumorOverlayUrl || tumorOverlayUrl.trim() === '' || nvRef.current.volumes.length === 0) {
       return;
     }
     
     try {
-      console.log('NiiVue 슬라이스 뷰어에서 Tumor 오버레이 로딩 시작:', tumorOverlayUrl);
+      // 개발 환경에서만 로그 출력
+      if (process.env.NODE_ENV === 'development') {
+        console.log('NiiVue 슬라이스 뷰어에서 Tumor 오버레이 로딩 시작:', tumorOverlayUrl);
+      }
       
       // URL 유효성 추가 검증
       if (!originalNiftiUrl || originalNiftiUrl.trim() === '') {
@@ -1045,7 +1108,7 @@ export default function NiiVueSliceViewer({
       const volumeList = [
         { 
           url: originalNiftiUrl,
-          name: 'brain.nii',
+          name: 'breast.nii',
           colormap: 'gray'
         },
         {
@@ -1060,9 +1123,9 @@ export default function NiiVueSliceViewer({
       // 볼륨 설정
       if (nvRef.current.volumes.length >= 2) {
         // 기본 뇌 이미지 설정
-        const brain = nvRef.current.volumes[0];
-        brain.opacity = 1.0;
-        nvRef.current.setColormap(brain.id, 'gray');
+        const breast = nvRef.current.volumes[0];
+        breast.opacity = 1.0;
+        nvRef.current.setColormap(breast.id, 'gray');
         
         // Tumor 오버레이 설정
         const tumorOverlay = nvRef.current.volumes[1];
@@ -1076,10 +1139,13 @@ export default function NiiVueSliceViewer({
         nvRef.current.updateGLVolume();
         setHasOverlay(true);
         
-        console.log('NiiVue 슬라이스 뷰어 Tumor 오버레이 로딩 성공');
+        // 개발 환경에서만 로그 출력
+        if (process.env.NODE_ENV === 'development') {
+          console.log('NiiVue 슬라이스 뷰어 Tumor 오버레이 로딩 성공');
+          console.log('🔍 Tumor 종양 분석 시작...');
+        }
         
         // 🔍 종양 분석 시작...
-        console.log('🔍 Tumor 종양 분석 시작...');
         await analyzeTumorData(nvRef.current, tumorOverlay);
       }
       
@@ -1091,7 +1157,10 @@ export default function NiiVueSliceViewer({
         case 'sagittal': sliceType = 2; break; // Sagittal - 시상 단면 (좌우)
       }
       
-      console.log(`🎯 ${plane} 뷰어 (Tumor 오버레이): 슬라이스 타입 ${sliceType}으로 강제 설정`);
+      // 개발 환경에서만 로그 출력
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`🎯 ${plane} 뷰어 (Tumor 오버레이): 슬라이스 타입 ${sliceType}으로 강제 설정`);
+      }
       
       // 슬라이스 타입 여러 번 적용 (확실히 고정)
       nvRef.current.setSliceType(sliceType);
@@ -1101,7 +1170,10 @@ export default function NiiVueSliceViewer({
       // 추가 방향 고정 설정
       nvRef.current.opts.isRadiological = false; // 신경학적 방향 (L=L, R=R)
       
-      console.log(`✅ ${plane} 뷰어 (Tumor 오버레이): 해부학적 방향 고정 완료 (sliceType: ${sliceType})`);
+      // 개발 환경에서만 로그 출력
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`✅ ${plane} 뷰어 (Tumor 오버레이): 해부학적 방향 고정 완료 (sliceType: ${sliceType})`);
+      }
       
       // 십자선 완전 제거 (Tumor 오버레이 로드 후에도 확실히 적용)
       nvRef.current.opts.show3Dcrosshair = false;
@@ -1115,7 +1187,7 @@ export default function NiiVueSliceViewer({
       console.error('NiiVue 슬라이스 뷰어 Tumor 오버레이 로딩 실패:', error);
       setHasOverlay(false);
     }
-  };
+  }, [tumorOverlayUrl, originalNiftiUrl, plane]);
 
   // globalSelectedSegFile이 변경될 때 오버레이 업데이트
   useEffect(() => {
@@ -1124,14 +1196,14 @@ export default function NiiVueSliceViewer({
         loadSegmentationOverlay();
       } else {
         // 오버레이 제거 - 기본 뇌 이미지만 다시 로드
-        const reloadBrainOnly = async () => {
+        const reloadBreastOnly = async () => {
           if (!originalNiftiUrl || originalNiftiUrl.trim() === '') {
             return;
           }
           
           const volumeList = [{ 
             url: originalNiftiUrl,
-            name: 'brain.nii',
+            name: 'breast.nii',
             colormap: 'gray'
           }];
           
@@ -1146,7 +1218,10 @@ export default function NiiVueSliceViewer({
               case 'sagittal': sliceType = 2; break; // Sagittal - 시상 단면 (좌우)
             }
             
-            console.log(`🎯 ${plane} 뷰어 (오버레이 제거): 슬라이스 타입 ${sliceType}으로 강제 설정`);
+            // 개발 환경에서만 로그 출력
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`🎯 ${plane} 뷰어 (오버레이 제거): 슬라이스 타입 ${sliceType}으로 강제 설정`);
+            }
             
             // 슬라이스 타입 여러 번 적용 (확실히 고정)
             nvRef.current!.setSliceType(sliceType);
@@ -1156,7 +1231,10 @@ export default function NiiVueSliceViewer({
             // 추가 방향 고정 설정
             nvRef.current!.opts.isRadiological = false; // 신경학적 방향 (L=L, R=R)
             
-            console.log(`✅ ${plane} 뷰어 (오버레이 제거): 해부학적 방향 고정 완료 (sliceType: ${sliceType})`);
+            // 개발 환경에서만 로그 출력
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`✅ ${plane} 뷰어 (오버레이 제거): 해부학적 방향 고정 완료 (sliceType: ${sliceType})`);
+            }
             
             // 십자선 완전 제거 (오버레이 제거 후에도 확실히 적용)
             nvRef.current!.opts.show3Dcrosshair = false;
@@ -1173,37 +1251,33 @@ export default function NiiVueSliceViewer({
           }
         };
         
-        reloadBrainOnly();
+        reloadBreastOnly();
       }
     }
-  }, [globalSelectedSegFile, originalNiftiUrl, plane]);
+  }, [globalSelectedSegFile, originalNiftiUrl, plane, loadSegmentationOverlay]);
 
   // Tumor 오버레이 URL이 변경될 때 오버레이 로드/제거
   useEffect(() => {
-    console.log(`🔥 ${plane} NiiVueSliceViewer: tumorOverlayUrl 변경됨:`, tumorOverlayUrl);
-    console.log(`🔥 ${plane} NiiVueSliceViewer: nvRef.current:`, !!nvRef.current);
-    console.log(`🔥 ${plane} NiiVueSliceViewer: volumes.length:`, nvRef.current?.volumes?.length || 0);
-    console.log(`🔥 ${plane} NiiVueSliceViewer: originalNiftiUrl:`, originalNiftiUrl);
+    // 개발 환경에서만 로그 출력
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🔥 ${plane} NiiVueSliceViewer: tumorOverlayUrl 변경됨:`, tumorOverlayUrl);
+    }
     
     // 더 엄격한 null 체크
     if (nvRef.current && nvRef.current.volumes && nvRef.current.volumes.length > 0) {
       if (tumorOverlayUrl) {
-        console.log(`🔥 ${plane} NiiVueSliceViewer: loadTumorOverlay 호출`);
         loadTumorOverlay();
       } else {
-        console.log(`🔥 ${plane} NiiVueSliceViewer: tumorOverlayUrl이 null이므로 오버레이 제거`);
         // tumorOverlayUrl이 null이면 오버레이 제거하고 기본 뇌만 표시
         if (originalNiftiUrl && originalNiftiUrl.trim() !== '') {
           loadFromOriginalUrl();
         }
       }
-    } else {
-      console.log(`🔥 ${plane} NiiVueSliceViewer: 조건 미충족 - nvRef 또는 volumes 없음`);
     }
-  }, [tumorOverlayUrl, originalNiftiUrl, plane]);
+  }, [tumorOverlayUrl, originalNiftiUrl, plane, loadTumorOverlay, loadFromOriginalUrl]);
 
   // 강제 방향 재설정 함수 (내부 사용용)
-  const forceOrientationReset = () => {
+  const forceOrientationReset = useCallback(() => {
     if (!nvRef.current) return;
     
     // 올바른 슬라이스 타입 적용
@@ -1226,10 +1300,10 @@ export default function NiiVueSliceViewer({
     // 화면 강제 업데이트
     nvRef.current.updateGLVolume();
     nvRef.current.drawScene();
-  };
+  }, [plane]);
 
   // 슬라이스 정보 업데이트
-  const updateSliceInfo = () => {
+  const updateSliceInfo = useCallback(() => {
     try {
       if (nvRef.current && nvRef.current.volumes && nvRef.current.volumes.length > 0) {
         const volume = nvRef.current.volumes[0];
@@ -1252,7 +1326,10 @@ export default function NiiVueSliceViewer({
         // maxSlice prop이 있으면 해당 값으로 제한
         if (maxSlice && maxSlice < maxSlicesForPlane) {
           maxSlicesForPlane = maxSlice;
-          console.log(`🎯 ${plane} 슬라이스 제한: ${maxSlice}까지`);
+          // 개발 환경에서만 로그 출력
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`🎯 ${plane} 슬라이스 제한: ${maxSlice}까지`);
+          }
         }
         
         setMaxSlices(maxSlicesForPlane);
@@ -1262,10 +1339,10 @@ export default function NiiVueSliceViewer({
     } catch (error) {
       console.warn('NiiVueSliceViewer: updateSliceInfo 오류:', error);
     }
-  };
+  }, [plane, maxSlice]);
 
 
-  // 줌 슬라이더 드래그 핸들러들 (Brain3DView와 완전히 동일)
+  // 줌 슬라이더 드래그 핸들러들 (Breast3DView와 완전히 동일)
   const sliderRef = useRef<HTMLDivElement>(null);
 
   const handleZoomMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -1314,7 +1391,7 @@ export default function NiiVueSliceViewer({
     handleZoomChange(newZoom);
   };
 
-  // 전역 마우스 이벤트 (드래그 중일 때) - Brain3DView와 완전히 동일
+  // 전역 마우스 이벤트 (드래그 중일 때) - Breast3DView와 완전히 동일
   useEffect(() => {
     if (!isZoomDragging) return;
 

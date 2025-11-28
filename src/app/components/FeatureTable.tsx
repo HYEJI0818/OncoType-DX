@@ -83,6 +83,7 @@ export default function FeatureTable({ sessionData }: FeatureTableProps) {
         ],
         summary: {
           total_features: 12,
+          significant_features: 8,
           analysis_method: 'PyRadiomics'
         }
       };

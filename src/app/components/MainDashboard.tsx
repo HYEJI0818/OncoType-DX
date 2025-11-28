@@ -42,7 +42,7 @@ export default function MainDashboard() {
     axial?: string;
     coronal?: string;
     sagittal?: string;
-    brain3d?: string;
+    breast3d?: string;
   }>({});
 
   // 원본 NIfTI 파일 URL 상태 추가
@@ -192,7 +192,7 @@ export default function MainDashboard() {
   const [selectedViews, setSelectedViews] = useState<Set<'axial' | 'coronal' | 'sagittal' | '3d'>>(new Set(['3d']));
   
   // 3D 뷰어 전용 데이터 상태 (초기 로드용)
-  const [brain3DData, setBrain3DData] = useState<{
+  const [breast3DData, setBreast3DData] = useState<{
     niftiHeader?: unknown;
     niftiImage?: ArrayBuffer;
   }>({});
@@ -222,7 +222,7 @@ export default function MainDashboard() {
             setOriginalNiftiUrl(firstFileUrl);
             setSelectedViews(new Set(['3d']));
             setUploadedImages({
-              brain3d: firstFileUrl
+              breast3d: firstFileUrl
             });
             
             console.log('✅ UUID 기반 3D 뷰어 활성화 완료');
@@ -237,7 +237,7 @@ export default function MainDashboard() {
             setOriginalNiftiUrl(sampleNiftiUrl);
             setSelectedViews(new Set(['3d']));
             setUploadedImages({
-              brain3d: sampleNiftiUrl
+              breast3d: sampleNiftiUrl
             });
             console.log('✅ 기본 샘플 데이터 로드 완료');
           }
@@ -253,25 +253,19 @@ export default function MainDashboard() {
     }
   }, [sessionId]);
 
-  // 디버깅 로그를 개발 환경에서만 실행하도록 최적화
+  // 디버깅 로그를 개발 환경에서만 실행하도록 최적화 (빈도 줄임)
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env.NODE_ENV === 'development' && tumorOverlayUrl !== null) {
       console.log('🔥 MainDashboard: tumorOverlayUrl 변경됨:', tumorOverlayUrl);
-      console.log('🔥 MainDashboard: selectedViews:', selectedViews);
-      console.log('🔥 MainDashboard: originalNiftiUrl:', originalNiftiUrl);
     }
   }, [tumorOverlayUrl]);
 
-  // 디버깅 로그를 개발 환경에서만 실행하도록 최적화
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔥 MainDashboard: selectedViews 변경됨:', selectedViews);
-    }
-  }, [selectedViews]);
+  // selectedViews 로그는 제거 (너무 빈번함)
 
   // 뷰 선택 핸들러 - 최적화된 버전으로 불필요한 리렌더링 방지
   const handleViewSelect = useCallback((views: Set<'axial' | 'coronal' | 'sagittal' | '3d'>) => {
-    if (process.env.NODE_ENV === 'development') {
+    // 개발 환경에서만 로그 출력 (빈도 줄임)
+    if (process.env.NODE_ENV === 'development' && views.size > 1) {
       console.log('뷰 선택 업데이트:', views, 'Type:', typeof views, 'Is Set:', views instanceof Set);
     }
     
@@ -300,7 +294,7 @@ export default function MainDashboard() {
     const newUploadedImages: typeof uploadedImages = {};
     viewsSet.forEach(view => {
       if (selectedFileUrl) {
-        const imageKey = view === '3d' ? 'brain3d' : view;
+        const imageKey = view === '3d' ? 'breast3d' : view;
         newUploadedImages[imageKey] = selectedFileUrl;
       }
     });
@@ -319,7 +313,7 @@ export default function MainDashboard() {
           axial: undefined,
           coronal: undefined,
           sagittal: undefined,
-          brain3d: undefined
+          breast3d: undefined
         });
       }, 50); // 50ms 지연으로 부드러운 전환
       
@@ -333,7 +327,7 @@ export default function MainDashboard() {
   // 3D 뷰어 전용 데이터 핸들러 (초기 로드용)
   const handle3DOnlyDataParsed = (header: unknown, image: ArrayBuffer) => {
     console.log('🎯 3D 전용 데이터 설정:', header, image);
-    setBrain3DData({
+    setBreast3DData({
       niftiHeader: header,
       niftiImage: image
     });
@@ -356,13 +350,13 @@ export default function MainDashboard() {
   const handlePatientSelect = (patientId?: number) => {
     setNiftiHeader(null);
     setNiftiImage(null);
-    setBrain3DData({}); // 3D 전용 데이터도 초기화
+    setBreast3DData({}); // 3D 전용 데이터도 초기화
     setSelectedViews(new Set(['3d'])); // 3D만 유지하고 나머지는 초기화
     setUploadedImages({
       axial: undefined,
       coronal: undefined,
       sagittal: undefined,
-      brain3d: undefined
+      breast3d: undefined
     });
     setOriginalNiftiUrl(undefined);
     setSelectedFileUrl(undefined); // 선택된 파일도 초기화
@@ -433,9 +427,9 @@ export default function MainDashboard() {
                     title="3D"
                     leftLabel="R"
                     rightLabel="L"
-                    imageUrl={uploadedImages.axial || uploadedImages.brain3d}
-                    niftiHeader={(selectedViews.size > 1 ? niftiHeader : brain3DData.niftiHeader) as unknown as NiftiHeader}
-                    niftiImage={(selectedViews.size > 1 ? niftiImage : brain3DData.niftiImage) || undefined}
+                    imageUrl={uploadedImages.axial || uploadedImages.breast3d}
+                    niftiHeader={(selectedViews.size > 1 ? niftiHeader : breast3DData.niftiHeader) as unknown as NiftiHeader}
+                    niftiImage={(selectedViews.size > 1 ? niftiImage : breast3DData.niftiImage) || undefined}
                     plane="axial"
                     patientId={selectedPatientId}
                     originalNiftiUrl={originalNiftiUrl} // tumor 오버레이를 위해 항상 전달
@@ -516,7 +510,7 @@ export default function MainDashboard() {
         {/* 전체화면 MPR 뷰어 모달 */}
         {showMPRViewer && (
           <MPRViewer
-            imageUrl={selectedViews.has('3d') ? uploadedImages.brain3d : undefined}
+            imageUrl={selectedViews.has('3d') ? uploadedImages.breast3d : undefined}
             niftiHeader={niftiHeader as unknown as NiftiHeader}
             niftiImage={niftiImage || undefined}
             originalNiftiUrl={originalNiftiUrl}

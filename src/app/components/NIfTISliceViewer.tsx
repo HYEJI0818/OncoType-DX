@@ -107,6 +107,7 @@ export default function NIfTISliceViewer({
               console.log(`📁 업로드된 파일을 모든 시퀀스에 적용:`, firstUploadedFile.name);
               
               // 모든 시퀀스 슬롯에 업로드된 파일 적용
+              const availableSequences = ['T1', 'T1CE', 'T2', 'FLAIR'];
               availableSequences.forEach((seq, index) => {
                 console.log(`${seq} 슬롯에 업로드된 파일 로드 예약`);
                 const isFirst = isFirstSequence;
@@ -149,7 +150,7 @@ export default function NIfTISliceViewer({
   
   // 상태 관리
   const [state, setState] = useState<SliceViewerState>({
-    sequence: 'T1N',
+    sequence: 'MAIN',
     slice: 100,
     axialSlice: 100, // Axial 뷰어 전용 슬라이스 초기값
     coronalSlice: 100, // Coronal 뷰어 전용 슬라이스 초기값
@@ -277,7 +278,7 @@ export default function NIfTISliceViewer({
     // 방향에 따른 슬라이스 데이터 추출 및 렌더링
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
-        let niftiIndex;
+        let niftiIndex = 0;
         
         if (plane === 'axial') {
           // Axial: Z축 슬라이스 (상하 반전)
@@ -335,6 +336,7 @@ export default function NIfTISliceViewer({
                 (Math.abs(tumorWidth - width) <= 1 && Math.abs(tumorHeight - height) <= 1 && Math.abs(tumorDepth - depth) <= 1)) {
               
               // 종양 오버레이에도 동일한 상하 반전만 적용 (좌우는 원래대로)
+              const flippedY = height - 1 - y;
               const tumorNiftiIndex = sliceIndex * tumorWidth * tumorHeight + flippedY * tumorWidth + x;
               
               if (tumorNiftiIndex >= 0 && tumorNiftiIndex < tumorOverlayData.image.byteLength / 4) {
@@ -598,7 +600,7 @@ export default function NIfTISliceViewer({
         onOriginalNiftiUrl?.(fileUrl);
         setOriginalNiftiUrl(fileUrl); // 로컬 상태 업데이트
       } else if (onNiftiDataParsed) {
-        onNiftiDataParsed(header, image);
+        onNiftiDataParsed(header as unknown as NiftiHeader, image);
         onOriginalNiftiUrl?.(fileUrl);
         setOriginalNiftiUrl(fileUrl); // 로컬 상태 업데이트
       }
@@ -621,8 +623,9 @@ export default function NIfTISliceViewer({
         // 업로드된 파일이 있으면 첫 번째 파일을 사용
         const firstFile = Object.values(uploadedFiles)[0];
         console.log(`${sequenceType} 슬롯에 업로드된 파일 사용:`, firstFile.name);
-        await loadSequenceFileFromUrl(sequenceType, firstFile.url, isUserClick, is3DOnly);
-        return;
+        // TODO: URL 기반 로딩 대신 ArrayBuffer 사용하도록 수정 필요
+        // await loadSequenceFileFromUrl(sequenceType, firstFile.url, isUserClick, is3DOnly);
+        // return;
       }
       
       // IndexedDB에서 파일 데이터 가져오기 (폴백)
@@ -1229,11 +1232,11 @@ export default function NIfTISliceViewer({
     }
   }, [extractSlice]);
 
-  // 3D Brain 렌더링 함수
-  const render3DBrain = useCallback((canvas: HTMLCanvasElement) => {
+  // 3D Breast 렌더링 함수
+  const render3DBreast = useCallback((canvas: HTMLCanvasElement) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) {
-      console.log('3D Brain: Canvas context 없음');
+      console.log('3D Breast: Canvas context 없음');
       return;
     }
     
@@ -1242,7 +1245,7 @@ export default function NIfTISliceViewer({
     canvas.height = containerSize;
     
     if (!niftiHeader || !niftiImage) {
-      console.log('3D Brain: NIfTI 데이터 없음');
+      console.log('3D Breast: NIfTI 데이터 없음');
       // 데이터가 없을 때 placeholder 표시
       ctx.fillStyle = '#374151';
       ctx.fillRect(0, 0, containerSize, containerSize);
@@ -1254,7 +1257,7 @@ export default function NIfTISliceViewer({
       return;
     }
 
-    console.log('3D Brain 렌더링 시작', { 
+    console.log('3D Breast 렌더링 시작', { 
       canvasSize: { width: canvas.width, height: canvas.height },
       headerDims: niftiHeader.dims 
     });
@@ -1332,11 +1335,11 @@ export default function NIfTISliceViewer({
     }
     
     ctx.putImageData(imageData, 0, 0);
-    console.log('3D Brain 렌더링 완료 (중간 슬라이스 방식)');
+    console.log('3D Breast 렌더링 완료 (중간 슬라이스 방식)');
   }, [niftiHeader, niftiImage]);
 
-  // 3D Brain Canvas ref 추가
-  const brain3DCanvasRef = useRef<HTMLCanvasElement>(null);
+  // 3D Breast Canvas ref 추가
+  const breast3DCanvasRef = useRef<HTMLCanvasElement>(null);
 
   // 모든 슬라이스 업데이트
   const updateAllSlices = useCallback(() => {
@@ -1518,9 +1521,9 @@ export default function NIfTISliceViewer({
         <div className="relative rounded-lg overflow-hidden aspect-square">
           <Breast3DView
             imageUrl={undefined}
-            niftiHeader={niftiHeader}
-            niftiImage={niftiImage}
-            originalNiftiUrl={originalNiftiUrl}
+            niftiHeader={niftiHeader || undefined}
+            niftiImage={niftiImage || undefined}
+            originalNiftiUrl={originalNiftiUrl || undefined}
             patientId={patientId}
             globalSelectedSegFile={globalSelectedSegFile}
             onFullscreenClick={onFullscreenClick}
