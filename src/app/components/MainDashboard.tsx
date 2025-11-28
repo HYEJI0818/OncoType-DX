@@ -399,12 +399,12 @@ export default function MainDashboard() {
               <div className="flex space-x-2">
                 <button
                   onClick={() => setShowMPRViewer(true)}
-                  className="px-3 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors whitespace-nowrap"
+                  className="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors whitespace-nowrap"
                 >
                   전체 화면
                 </button>
                 <button
-                  className={`px-3 py-1 text-xs rounded transition-colors whitespace-nowrap ${
+                  className={`px-3 py-1.5 text-sm rounded transition-colors whitespace-nowrap ${
                     tumorOverlayUrl 
                       ? 'bg-green-600 hover:bg-green-700 text-white'
                       : 'bg-red-600 hover:bg-red-700 text-white'

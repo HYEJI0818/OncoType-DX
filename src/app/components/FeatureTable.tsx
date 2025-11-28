@@ -267,7 +267,7 @@ export default function FeatureTable({ sessionData }: FeatureTableProps) {
       </h3>
       
       {/* 컨텐츠 영역 */}
-      <div className="overflow-y-auto max-h-[600px]">
+      <div>
         {/* 활성화된 항목들 */}
         <div className="space-y-4">
         {Object.entries(activeFeatures).map(([category, features]) => {

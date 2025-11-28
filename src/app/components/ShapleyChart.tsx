@@ -90,10 +90,10 @@ export default function ShapleyChart({ sessionData }: ShapleyChartProps) {
   const currentImportanceData = shapleyData?.importance || defaultImportanceData;
 
   return (
-    <div className="bg-gray-800 rounded-lg p-4 h-full flex flex-col">
-      <h3 className="text-white text-sm font-medium mb-2 text-center">{t.shapleyValues} & {t.importance}</h3>
+    <div className="bg-gray-800 rounded-lg p-4 h-fit flex flex-col">
+      <h3 className="text-white text-sm font-medium mb-2 text-center">{t.shapleyValues} & Feature Importance</h3>
       
-      <div className="flex-1 overflow-y-auto">
+      <div className="pt-4">
         {/* Shapley Values */}
         <div className="mb-6">
           <h4 className="text-gray-300 text-xs mb-3 text-center">{t.shapleyValues}</h4>
@@ -119,7 +119,7 @@ export default function ShapleyChart({ sessionData }: ShapleyChartProps) {
 
         {/* Feature Importance */}
         <div>
-          <h4 className="text-gray-300 text-xs mb-3 text-center">{t.importance}</h4>
+          <h4 className="text-gray-300 text-xs mb-3 text-center">Feature Importance</h4>
           <div className="space-y-2">
             {currentImportanceData.map((item, index) => (
               <div key={index} className="flex items-center text-xs justify-center">

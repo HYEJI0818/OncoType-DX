@@ -1458,19 +1458,19 @@ export default function NIfTISliceViewer({
     }, 100);
   }, []);
 
-  // 자동 재생 기능
-  useEffect(() => {
-    if (!state.isPlaying) return;
+  // 자동 재생 기능 - 비활성화
+  // useEffect(() => {
+  //   if (!state.isPlaying) return;
 
-    const interval = setInterval(() => {
-      setState(prev => ({
-        ...prev,
-        slice: (prev.slice + 1) % Math.max(maxSlices.axial, maxSlices.coronal, maxSlices.sagittal)
-      }));
-    }, 100);
+  //   const interval = setInterval(() => {
+  //     setState(prev => ({
+  //       ...prev,
+  //       slice: (prev.slice + 1) % Math.max(maxSlices.axial, maxSlices.coronal, maxSlices.sagittal)
+  //     }));
+  //   }, 100);
 
-    return () => clearInterval(interval);
-  }, [state.isPlaying, maxSlices]);
+  //   return () => clearInterval(interval);
+  // }, [state.isPlaying, maxSlices]);
 
   // 키보드 컨트롤
   useEffect(() => {
