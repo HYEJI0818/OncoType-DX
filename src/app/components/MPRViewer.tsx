@@ -814,7 +814,9 @@ export default function MPRViewer({
       
       // 🔥 초기 tumor 오버레이가 있으면 로드 (원본 뇌 로드 완료 후)
       if (initialTumorOverlayUrl && nvRef.current && nvRef.current.volumes && nvRef.current.volumes.length > 0) {
-        console.log('🔥 MPRViewer: 원본 뇌 로드 완료 후 초기 tumor 오버레이 로드 시작');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔥 MPRViewer: 원본 뇌 로드 완료 후 초기 tumor 오버레이 로드 시작');
+        }
         setTimeout(() => {
           loadTumorOverlay(initialTumorOverlayUrl);
         }, 500); // 짧은 지연으로 안정성 확보
@@ -1586,25 +1588,21 @@ export default function MPRViewer({
 
   // tumorOverlayUrl이 변경될 때 Tumor 오버레이 로드/제거 (분석 페이지와 동일)
   useEffect(() => {
-    console.log('🔥 MPRViewer: tumorOverlayUrl 변경됨:', tumorOverlayUrl);
-    console.log('🔥 MPRViewer: nvRef.current:', !!nvRef.current);
-    console.log('🔥 MPRViewer: volumes.length:', nvRef.current?.volumes?.length || 0);
-    console.log('🔥 MPRViewer: originalNiftiUrl:', originalNiftiUrl);
+    // 개발 환경에서만 로그 출력하고 빈도 줄임
+    if (process.env.NODE_ENV === 'development' && tumorOverlayUrl !== null) {
+      console.log('🔥 MPRViewer: tumorOverlayUrl 변경됨:', tumorOverlayUrl);
+    }
     
     // 더 엄격한 null 체크
     if (nvRef.current && nvRef.current.volumes && nvRef.current.volumes.length > 0) {
       if (tumorOverlayUrl) {
-        console.log('🔥 MPRViewer: loadTumorOverlay 호출');
         loadTumorOverlay(tumorOverlayUrl);
       } else {
-        console.log('🔥 MPRViewer: tumorOverlayUrl이 null이므로 오버레이 제거');
         // tumorOverlayUrl이 null이면 오버레이 제거하고 기본 뇌만 표시
         reloadOriginalBreast();
       }
-    } else {
-      console.log('🔥 MPRViewer: 조건 미충족 - nvRef 또는 volumes 없음');
     }
-  }, [tumorOverlayUrl, originalNiftiUrl]);
+  }, [tumorOverlayUrl]);
 
   // 초기화 시 전달받은 tumorOverlayUrl 로드는 loadFromOriginalUrl 완료 후에 처리됨
 
@@ -1669,7 +1667,7 @@ export default function MPRViewer({
       console.error('MPRViewer Tumor 오버레이 로딩 실패:', error);
       setHasOverlay(false);
     }
-  }, [originalNiftiUrl]);
+  }, []); // originalNiftiUrl 의존성 제거 - 함수 내부에서 최신 값을 참조
 
   // Overlay Canvas 그리기 이벤트 핸들러들
   const getDrawingStyle = () => {
@@ -1994,7 +1992,9 @@ export default function MPRViewer({
         
         // 🔥 TUMOR 오버레이가 있으면 뷰 모드 변경 후 재로드
         if (tumorOverlayUrl) {
-          console.log(`🔥 뷰 모드 ${mode} 전환 후 TUMOR 오버레이 재로드:`, tumorOverlayUrl);
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`🔥 뷰 모드 ${mode} 전환 후 TUMOR 오버레이 재로드:`, tumorOverlayUrl);
+          }
           await loadTumorOverlay(tumorOverlayUrl);
         }
         
@@ -2074,13 +2074,16 @@ export default function MPRViewer({
           ctx.scale(devicePixelRatio, devicePixelRatio);
         }
         
-        console.log('📐 Canvas 크기 동기화:', {
-          width: rect.width,
-          height: rect.height,
-          devicePixelRatio,
-          canvasWidth: overlayCanvas.width,
-          canvasHeight: overlayCanvas.height
-        });
+        // 개발 환경에서만 로그 출력 (빈도 줄임)
+        if (process.env.NODE_ENV === 'development' && Math.random() < 0.1) {
+          console.log('📐 Canvas 크기 동기화:', {
+            width: rect.width,
+            height: rect.height,
+            devicePixelRatio,
+            canvasWidth: overlayCanvas.width,
+            canvasHeight: overlayCanvas.height
+          });
+        }
       }
     };
 
@@ -2130,11 +2133,14 @@ export default function MPRViewer({
             // 안전한 drawScene 호출
             safeDrawScene(nvRef.current, 'MPR 동기화');
             
-            console.log('🎯 MPR+3D 십자선 상호작용:', {
-              axial: (axialPos * 100).toFixed(1) + '%',
-              coronal: (coronalPos * 100).toFixed(1) + '%',
-              sagittal: (sagittalPos * 100).toFixed(1) + '%'
-            });
+            // 이제 이벤트 기반으로만 실행되므로 로그 복원 가능
+            if (process.env.NODE_ENV === 'development') {
+              console.log('🎯 MPR+3D 십자선 상호작용:', {
+                axial: (axialPos * 100).toFixed(1) + '%',
+                coronal: (coronalPos * 100).toFixed(1) + '%',
+                sagittal: (sagittalPos * 100).toFixed(1) + '%'
+              });
+            }
             return; // MPR 전용 처리 완료
           }
           
@@ -2315,11 +2321,8 @@ export default function MPRViewer({
           canvas.addEventListener('mousedown', throttledUpdate, { passive: true });
         }
         
-        // MPR+3D 모드에서는 더 빠른 업데이트, 다른 모드에서는 일반적인 업데이트
-        const updateInterval = currentSliceType === 3 ? 16 : 50; // MPR+3D는 16ms(60fps), 다른 모드는 50ms
-        const interval = setInterval(() => {
-          updateSlicePositions();
-        }, updateInterval);
+        // setInterval 제거 - 이벤트 기반으로만 업데이트 (무한 로그 방지)
+        // 마우스 이벤트 리스너들이 이미 충분히 십자선 업데이트를 처리함
         
         return () => {
           if (animationFrameId) {
@@ -2339,7 +2342,7 @@ export default function MPRViewer({
             canvas.removeEventListener('mousedown', throttledUpdate);
           }
           
-          clearInterval(interval);
+          // clearInterval 제거 - interval이 더 이상 존재하지 않음
         };
       }
     }
@@ -2403,14 +2406,18 @@ export default function MPRViewer({
       document.addEventListener('mouseleave', handleGlobalMouseUp, { passive: true });
       
       const modeText = slicePlaneMode === 'oblique' ? 'Oblique' : '3D';
-      console.log(`🔥 ${modeText} 모드: 완전한 360도 회전 이벤트 리스너 등록`);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`🔥 ${modeText} 모드: 완전한 360도 회전 이벤트 리스너 등록`);
+      }
       
       return () => {
         document.removeEventListener('mousedown', handleGlobalMouseDown);
         document.removeEventListener('mousemove', handleGlobalMouseMove);
         document.removeEventListener('mouseup', handleGlobalMouseUp);
         document.removeEventListener('mouseleave', handleGlobalMouseUp);
-        console.log(`🔥 ${modeText} 모드: 360도 회전 이벤트 리스너 제거`);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`🔥 ${modeText} 모드: 360도 회전 이벤트 리스너 제거`);
+        }
       };
     }
   }, [currentSliceType, nvRef.current]);
@@ -2506,7 +2513,9 @@ export default function MPRViewer({
 
   // Oblique 모드 - 보라색 슬라이스 평면 기능 (잘 작동했던 버전 그대로)
   const setView3DSliceWithClipping = useCallback(async () => {
-    console.log('🔥🔥🔥 Oblique 모드 활성화!');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔥🔥🔥 Oblique 모드 활성화!');
+    }
     setIsLoading(true);
     
     // 기존 인스턴스들 정리
@@ -2519,13 +2528,17 @@ export default function MPRViewer({
     // Oblique 모드에서는 그리기 모드 비활성화 (마우스 인터랙션 방해 방지)
     if (isDrawingMode) {
       setIsDrawingMode(false);
-      console.log('🔥 Oblique 모드: 그리기 모드 자동 비활성화');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔥 Oblique 모드: 그리기 모드 자동 비활성화');
+      }
     }
     
     // Oblique 모드 직접 초기화
     if (nvRef.current) {
       try {
-        console.log('🔥 Oblique 모드 직접 설정 시작');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔥 Oblique 모드 직접 설정 시작');
+        }
         
         // 3D 렌더링 + 슬라이스 평면 모드
         nvRef.current.setSliceType(4); // 3D 렌더 모드
@@ -2610,19 +2623,25 @@ export default function MPRViewer({
           // 초기 클리핑 평면 위치 설정 (뇌 중앙) - 4개 값으로 수정
           nvRef.current.setClipPlane([0, 0, 1, -0.1]); // Z축 클리핑 평면
           
-          console.log('🔥 볼륨 설정 및 클리핑 평면 적용 - 슬라이스 텍스처 활성화');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔥 볼륨 설정 및 클리핑 평면 적용 - 슬라이스 텍스처 활성화');
+          }
         }
         
         safeDrawScene(nvRef.current);
         
         // 🔥 TUMOR 오버레이가 있으면 Oblique 모드 설정 후 재로드
         if (tumorOverlayUrl) {
-          console.log('🔥 Oblique 모드 설정 후 TUMOR 오버레이 재로드:', tumorOverlayUrl);
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔥 Oblique 모드 설정 후 TUMOR 오버레이 재로드:', tumorOverlayUrl);
+          }
           await loadTumorOverlay(tumorOverlayUrl);
         }
         
         setIsLoading(false);
-        console.log('🔥 Oblique 모드 설정 완료!');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔥 Oblique 모드 설정 완료!');
+        }
       } catch (error) {
         console.error('🔥 Oblique 모드 설정 오류:', error);
         setIsLoading(false);
@@ -2654,7 +2673,9 @@ export default function MPRViewer({
           </button>
           <button
             onClick={async () => {
-              console.log('🔥🔥🔥 Oblique 버튼 클릭됨!');
+              if (process.env.NODE_ENV === 'development') {
+                console.log('🔥🔥🔥 Oblique 버튼 클릭됨!');
+              }
               await setView3DSliceWithClipping();
             }}
             className="px-2 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 font-bold"
