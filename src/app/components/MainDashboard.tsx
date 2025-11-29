@@ -470,6 +470,7 @@ export default function MainDashboard() {
                     originalNiftiUrl={originalNiftiUrl}
                     globalSelectedSegFile={globalSelectedSegFile}
                     tumorOverlayUrl={tumorOverlayUrl}
+                    sessionData={sessionData}
                   />
                   
                   {/* 네 번째 뷰어 - Radiomics Feature */}

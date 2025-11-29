@@ -1,6 +1,7 @@
 import NiiVueSliceViewer from './NiiVueSliceViewer';
 import Breast3DView from './Breast3DView';
 import { useState, useEffect } from 'react';
+import { openPrintPreview, extractReportDataFromSession } from '@/lib/pdfGenerator';
 
 interface NiftiHeader {
   dims: number[];
@@ -25,6 +26,7 @@ interface MRIViewProps {
   tumorOverlayUrl?: string | null; // Tumor 오버레이 URL 추가
   maxSlice?: number; // 최대 슬라이스 수 제한
   onXAIClick?: () => void; // XAI 설명 버튼 클릭 핸들러
+  sessionData?: any; // AI 분석 세션 데이터
 }
 
 export default function MRIView({ 
@@ -42,7 +44,8 @@ export default function MRIView({
   globalSelectedSegFile,
   tumorOverlayUrl,
   maxSlice,
-  onXAIClick
+  onXAIClick,
+  sessionData
 }: MRIViewProps) {
   // 메모 상태 관리
   const [memoText, setMemoText] = useState('');
@@ -117,7 +120,20 @@ export default function MRIView({
             </div>
             
             <div className="pt-4 mt-2">
-              <button className="w-full px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded transition-colors">
+              <button 
+                onClick={() => {
+                  try {
+                    console.log('인쇄 미리보기 창 열기...');
+                    const reportData = extractReportDataFromSession(sessionData);
+                    openPrintPreview(reportData);
+                    console.log('인쇄 미리보기 창 열기 완료!');
+                  } catch (error) {
+                    console.error('인쇄 미리보기 실패:', error);
+                    alert('인쇄 미리보기 중 오류가 발생했습니다.');
+                  }
+                }}
+                className="w-full px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded transition-colors"
+              >
                 PDF 리포트 출력
               </button>
             </div>
