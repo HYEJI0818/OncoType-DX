@@ -11,6 +11,7 @@ import ShapleyChart from './ShapleyChart';
 import OptimizedLLMAnalysis from './OptimizedLLMAnalysis';
 import NIfTISliceViewer from './NIfTISliceViewer';
 import MPRViewer from './MPRViewer';
+import XAIExplanationPopup from './XAIExplanationPopup';
 
 interface NiftiHeader {
   dims: number[];
@@ -62,6 +63,9 @@ export default function MainDashboard() {
 
   // 전체화면 모달 상태 추가
   const [showMPRViewer, setShowMPRViewer] = useState(false);
+
+  // XAI 설명 팝업 상태 추가
+  const [showXAIPopup, setShowXAIPopup] = useState(false);
 
   // NIfTI 파일 데이터를 관리하는 상태 (뷰어 간 공유용)
   const [niftiHeader, setNiftiHeader] = useState<unknown>(null);
@@ -481,6 +485,7 @@ export default function MainDashboard() {
                     originalNiftiUrl={originalNiftiUrl}
                     globalSelectedSegFile={globalSelectedSegFile}
                     tumorOverlayUrl={tumorOverlayUrl}
+                    onXAIClick={() => setShowXAIPopup(true)}
                   />
                 </div>
               </div>
@@ -520,6 +525,12 @@ export default function MainDashboard() {
             onClose={() => setShowMPRViewer(false)}
           />
         )}
+
+        {/* XAI 설명 팝업 */}
+        <XAIExplanationPopup
+          isOpen={showXAIPopup}
+          onClose={() => setShowXAIPopup(false)}
+        />
       </div>
     </div>
   );

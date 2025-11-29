@@ -24,6 +24,7 @@ interface MRIViewProps {
   globalSelectedSegFile?: string | null; // 전역 segmentation 파일
   tumorOverlayUrl?: string | null; // Tumor 오버레이 URL 추가
   maxSlice?: number; // 최대 슬라이스 수 제한
+  onXAIClick?: () => void; // XAI 설명 버튼 클릭 핸들러
 }
 
 export default function MRIView({ 
@@ -40,7 +41,8 @@ export default function MRIView({
   originalNiftiUrl,
   globalSelectedSegFile,
   tumorOverlayUrl,
-  maxSlice
+  maxSlice,
+  onXAIClick
 }: MRIViewProps) {
   // 메모 상태 관리
   const [memoText, setMemoText] = useState('');
@@ -283,7 +285,10 @@ export default function MRIView({
               
               {/* XAI 설명 버튼 */}
               <div className="absolute bottom-4 left-4 right-4">
-                <button className="w-full px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded transition-colors">
+                <button 
+                  onClick={onXAIClick}
+                  className="w-full px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded transition-colors"
+                >
                   XAI 설명 →
                 </button>
               </div>
