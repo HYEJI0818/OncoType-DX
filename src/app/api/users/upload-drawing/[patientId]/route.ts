@@ -15,6 +15,15 @@ export async function POST(
       return NextResponse.json({ error: '파일이 없습니다.' }, { status: 400 });
     }
 
+    // 파일 크기 체크 (최대 50MB)
+    const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { error: `파일이 너무 큽니다. 최대 50MB까지 업로드 가능합니다.` },
+        { status: 413 }
+      );
+    }
+
     console.log(`🚀 환자 ${patientId} 드로잉 파일 업로드 시작:`, file.name);
     console.log('📝 API 버전: RLS 우회 버전 (파일만 저장)');
 

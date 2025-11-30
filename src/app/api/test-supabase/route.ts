@@ -10,10 +10,10 @@ export async function GET() {
     console.log('헬스체크 결과:', healthStatus);
 
     // 2. 환자 데이터 샘플 조회
-    let patients = [];
-    let patientsError = null;
+    let patients: any[] = [];
+    let patientsError: string | null = null;
     try {
-      patients = await PatientService.getAllPatients();
+      patients = await PatientService.getAllPatients() as any[];
     } catch (error: any) {
       patientsError = error.message;
     }
@@ -23,16 +23,16 @@ export async function GET() {
     console.log('Storage 정보:', storageInfo);
 
     // 4. 버킷 목록 조회
-    let buckets = [];
-    let bucketsError = null;
+    let buckets: any[] = [];
+    let bucketsError: string | null = null;
     try {
-      buckets = await StorageService.listBuckets();
+      buckets = await StorageService.listBuckets() as any[];
     } catch (error: any) {
       bucketsError = error.message;
     }
 
     // 5. 샘플 파일 목록 조회
-    let sampleFiles = [];
+    let sampleFiles: any[] = [];
     let filesError = null;
     try {
       sampleFiles = await StorageService.listFiles('patients');

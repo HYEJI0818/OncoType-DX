@@ -9,9 +9,8 @@ export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [loginType, setLoginType] = useState<'email' | 'employee'>('employee');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { setIsAuthenticated, setUser } = useAuth();
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -20,42 +19,26 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      if (loginType === 'employee') {
-        // 사번 로그인
-        const response = await fetch('/api/auth/employee-login', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            employeeId: username,
-            password: password
-          }),
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-          // 사번 로그인 성공 - 클라이언트에서 실제 로그인 수행
-          const success = await login(data.credentials.email, data.credentials.password);
-          if (success) {
-            // 로그인 성공 시 업로드 페이지로 이동
-            router.push('/upload');
-          } else {
-            setError('로그인 처리 중 오류가 발생했습니다.');
+      // 하드코딩된 로그인: test / 1234 만 허용
+      if (username === 'test' && password === '1234') {
+        console.log('✅ 로그인 성공 - test 사용자');
+        
+        // 로그인 성공 처리
+        setIsAuthenticated(true);
+        setUser({
+          id: 'test-user',
+          email: 'test@oncotype.local',
+          user_metadata: {
+            name: '테스트 사용자',
+            role: 'admin'
           }
-        } else {
-          setError(data.error || '사번 또는 비밀번호가 올바르지 않습니다.');
-        }
+        });
+        
+        // 업로드 페이지로 이동
+        router.push('/upload');
       } else {
-        // 이메일 로그인
-        const success = await login(username, password)
-        if (success) {
-          // 로그인 성공 시 업로드 페이지로 이동
-          router.push('/upload');
-        } else {
-          setError('이메일 또는 비밀번호가 올바르지 않습니다.');
-        }
+        // 로그인 실패
+        setError('아이디 또는 비밀번호가 올바르지 않습니다.');
       }
     } catch (error) {
       console.error('로그인 오류:', error);
@@ -113,49 +96,11 @@ export default function LoginPage() {
             <div className="mt-4 h-1 w-20 bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-400 rounded-full mx-auto shadow-lg shadow-blue-400/50"></div>
           </div>
 
-          {/* 로그인 타입 탭 */}
-          <div className="relative z-10 mb-6">
-            <div className="flex bg-white/10 backdrop-blur-sm rounded-xl p-1 border-2 border-white/20">
-              <button
-                type="button"
-                onClick={() => {
-                  setLoginType('employee');
-                  setUsername('');
-                  setError('');
-                }}
-                className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all duration-300 ${
-                  loginType === 'employee'
-                    ? 'bg-blue-500/50 text-white shadow-lg'
-                    : 'text-gray-300 hover:text-white'
-                }`}
-                style={{textShadow: '1px 1px 2px rgba(0,0,0,0.8)'}}
-              >
-                사번 로그인
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setLoginType('email');
-                  setUsername('');
-                  setError('');
-                }}
-                className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all duration-300 ${
-                  loginType === 'email'
-                    ? 'bg-blue-500/50 text-white shadow-lg'
-                    : 'text-gray-300 hover:text-white'
-                }`}
-                style={{textShadow: '1px 1px 2px rgba(0,0,0,0.8)'}}
-              >
-                이메일 로그인
-              </button>
-            </div>
-          </div>
-
           <form onSubmit={handleLogin} className="space-y-6 relative z-10">
             <div>
               <label htmlFor="username" className="block text-sm font-bold text-white mb-2"
                      style={{textShadow: '1px 1px 3px rgba(0,0,0,0.8)'}}>
-                {loginType === 'email' ? '이메일' : '사번'}
+                아이디
               </label>
               <input
                 type="text"
@@ -164,7 +109,7 @@ export default function LoginPage() {
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border-2 border-white/30 rounded-xl text-white placeholder-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50 transition-all duration-300 font-medium"
                 style={{textShadow: '1px 1px 2px rgba(0,0,0,0.5)'}}
-                placeholder={loginType === 'email' ? '이메일을 입력하세요' : '사번을 입력하세요'}
+                placeholder="아이디를 입력하세요"
                 required
               />
             </div>

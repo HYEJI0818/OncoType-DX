@@ -1718,7 +1718,31 @@ export default function AdminDashboard() {
                         type="file"
                         multiple
                         accept=".nii,.nii.gz,.dcm,.dicom"
-                        onChange={(e) => setSelectedMRIFiles(e.target.files)}
+                        onChange={(e) => {
+                          const files = e.target.files;
+                          if (!files || files.length === 0) return;
+                          
+                          // 파일 크기 체크
+                          const maxFileSize = 100 * 1024 * 1024; // 100MB
+                          const maxTotalSize = 500 * 1024 * 1024; // 500MB
+                          
+                          const oversizedFiles = Array.from(files).filter(file => file.size > maxFileSize);
+                          if (oversizedFiles.length > 0) {
+                            alert(`다음 파일들이 너무 큽니다 (개별 파일 최대 100MB):\n${oversizedFiles.map(f => f.name).join('\n')}`);
+                            e.target.value = ''; // 파일 선택 초기화
+                            return;
+                          }
+                          
+                          const totalSize = Array.from(files).reduce((sum, file) => sum + file.size, 0);
+                          if (totalSize > maxTotalSize) {
+                            const totalSizeMB = Math.round(totalSize / (1024 * 1024));
+                            alert(`전체 파일 크기가 너무 큽니다 (${totalSizeMB}MB). 최대 500MB까지 업로드 가능합니다.`);
+                            e.target.value = ''; // 파일 선택 초기화
+                            return;
+                          }
+                          
+                          setSelectedMRIFiles(files);
+                        }}
                         className="hidden"
                       />
                     </label>
@@ -1839,7 +1863,31 @@ export default function AdminDashboard() {
                         type="file"
                         multiple
                         accept=".nii,.nii.gz,.dcm,.dicom"
-                        onChange={(e) => setMRIFiles(e.target.files)}
+                        onChange={(e) => {
+                          const files = e.target.files;
+                          if (!files || files.length === 0) return;
+                          
+                          // 파일 크기 체크
+                          const maxFileSize = 100 * 1024 * 1024; // 100MB
+                          const maxTotalSize = 500 * 1024 * 1024; // 500MB
+                          
+                          const oversizedFiles = Array.from(files).filter(file => file.size > maxFileSize);
+                          if (oversizedFiles.length > 0) {
+                            alert(`다음 파일들이 너무 큽니다 (개별 파일 최대 100MB):\n${oversizedFiles.map(f => f.name).join('\n')}`);
+                            e.target.value = ''; // 파일 선택 초기화
+                            return;
+                          }
+                          
+                          const totalSize = Array.from(files).reduce((sum, file) => sum + file.size, 0);
+                          if (totalSize > maxTotalSize) {
+                            const totalSizeMB = Math.round(totalSize / (1024 * 1024));
+                            alert(`전체 파일 크기가 너무 큽니다 (${totalSizeMB}MB). 최대 500MB까지 업로드 가능합니다.`);
+                            e.target.value = ''; // 파일 선택 초기화
+                            return;
+                          }
+                          
+                          setMRIFiles(files);
+                        }}
                         className="hidden"
                       />
                     </label>
@@ -2073,7 +2121,31 @@ export default function AdminDashboard() {
                         type="file"
                         multiple
                         accept=".nii,.nii.gz,.dcm,.dicom"
-                        onChange={(e) => setEditMRIFiles(e.target.files)}
+                        onChange={(e) => {
+                          const files = e.target.files;
+                          if (!files || files.length === 0) return;
+                          
+                          // 파일 크기 체크
+                          const maxFileSize = 100 * 1024 * 1024; // 100MB
+                          const maxTotalSize = 500 * 1024 * 1024; // 500MB
+                          
+                          const oversizedFiles = Array.from(files).filter(file => file.size > maxFileSize);
+                          if (oversizedFiles.length > 0) {
+                            alert(`다음 파일들이 너무 큽니다 (개별 파일 최대 100MB):\n${oversizedFiles.map(f => f.name).join('\n')}`);
+                            e.target.value = ''; // 파일 선택 초기화
+                            return;
+                          }
+                          
+                          const totalSize = Array.from(files).reduce((sum, file) => sum + file.size, 0);
+                          if (totalSize > maxTotalSize) {
+                            const totalSizeMB = Math.round(totalSize / (1024 * 1024));
+                            alert(`전체 파일 크기가 너무 큽니다 (${totalSizeMB}MB). 최대 500MB까지 업로드 가능합니다.`);
+                            e.target.value = ''; // 파일 선택 초기화
+                            return;
+                          }
+                          
+                          setEditMRIFiles(files);
+                        }}
                         className="hidden"
                       />
                     </label>

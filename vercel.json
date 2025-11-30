@@ -5,8 +5,13 @@
   "installCommand": "npm install",
   "public": true,
   "functions": {
+    "src/app/api/upload-session/route.ts": {
+      "maxDuration": 60,
+      "memory": 1024
+    },
     "src/app/api/**/*.ts": {
-      "maxDuration": 30
+      "maxDuration": 60,
+      "memory": 1024
     }
   },
   "headers": [

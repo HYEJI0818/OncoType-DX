@@ -240,7 +240,7 @@ export default function Breast3DView({ imageUrl, niftiHeader, niftiImage, origin
                 console.log('🔧 WebGL 컨텍스트 상태 확인 완료');
                 
                 // NiiVue 내부 상태 안정화를 위한 짧은 대기
-                await new Promise(resolve => setTimeout(resolve, 50));
+                await new Promise(resolve => setTimeout(resolve, 10));
                 
                 // 초기 렌더링 시도 (vec4 에러가 발생할 수 있는 지점)
                 if (nv.drawScene) {

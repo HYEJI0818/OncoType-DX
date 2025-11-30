@@ -54,12 +54,13 @@ export default function UploadPage() {
   const [processingStep, setProcessingStep] = useState(0);
   const [processingProgress, setProcessingProgress] = useState(0);
 
-  // 인증 상태 확인
+  // 인증 상태 확인 (임시로 비활성화 - 테스트용)
   useEffect(() => {
-    if (!loading && !isAuthenticated && !user) {
-      console.log('🔄 업로드 페이지 - 인증되지 않음, 로그인으로 리다이렉트');
-      router.push('/login');
-    }
+    // if (!loading && !isAuthenticated && !user) {
+    //   console.log('🔄 업로드 페이지 - 인증되지 않음, 로그인으로 리다이렉트');
+    //   router.push('/login');
+    // }
+    console.log('⚠️ 인증 체크 비활성화 - 테스트 모드');
   }, [loading, isAuthenticated, user, router]);
 
   // 파일 업로드 핸들러
@@ -88,12 +89,21 @@ export default function UploadPage() {
       return;
     }
 
-    // 파일 크기 체크 (500MB)
-    const maxSize = 500 * 1024 * 1024; // 500MB
-    const oversizedFiles = supportedFiles.filter(file => file.size > maxSize);
+    // 파일 크기 체크 (개별 파일 100MB, 전체 500MB)
+    const maxFileSize = 100 * 1024 * 1024; // 100MB
+    const maxTotalSize = 500 * 1024 * 1024; // 500MB
     
+    const oversizedFiles = supportedFiles.filter(file => file.size > maxFileSize);
     if (oversizedFiles.length > 0) {
-      alert(`다음 파일들이 최대 크기(500MB)를 초과합니다:\n${oversizedFiles.map(f => f.name).join('\n')}`);
+      alert(`다음 파일들이 너무 큽니다 (개별 파일 최대 100MB):\n${oversizedFiles.map(f => f.name).join('\n')}`);
+      return;
+    }
+
+    // 전체 파일 크기 체크
+    const totalSize = supportedFiles.reduce((sum, file) => sum + file.size, 0);
+    if (totalSize > maxTotalSize) {
+      const totalSizeMB = Math.round(totalSize / (1024 * 1024));
+      alert(`전체 파일 크기가 너무 큽니다 (${totalSizeMB}MB). 최대 500MB까지 업로드 가능합니다.`);
       return;
     }
 
@@ -129,7 +139,7 @@ export default function UploadPage() {
     });
   };
 
-  // 분석 시작 (UUID 기반 파일 저장)
+  // 분석 시작 (Supabase Storage 직접 업로드)
   const startAnalysis = async () => {
     if (uploadedFiles.length === 0) {
       alert('최소 1개의 파일을 업로드해주세요.');
@@ -146,30 +156,86 @@ export default function UploadPage() {
       console.log('🆔 새 세션 UUID 생성:', sessionUuid);
 
       // 1단계: 파일 전처리 및 저장
-      console.log('🚀 1단계: 파일 전처리 및 저장 시작...');
-      await simulateProgress(1, 1000); // 1초
+      console.log('🚀 1단계: Supabase Storage에 파일 업로드 시작...');
+      setProcessingStep(1);
       
-      // uploads 폴더에 UUID 기반으로 파일 저장
-      const formData = new FormData();
-      uploadedFiles.forEach((file, index) => {
-        formData.append(`file_${index}`, file);
-      });
-      formData.append('sessionId', sessionUuid);
-      formData.append('patientName', patientInfo.name || 'Unknown Patient');
+      // Supabase client 가져오기 (이미 생성된 클라이언트 사용)
+      const { supabase } = await import('@/lib/supabase');
+
+      const uploadedFileData: any[] = [];
       
-      // 파일 업로드 API 호출
-      console.log('📤 파일 업로드 중...');
-      const uploadResponse = await fetch('/api/upload-session', {
-        method: 'POST',
-        body: formData
-      });
-      
-      if (!uploadResponse.ok) {
-        throw new Error('파일 업로드에 실패했습니다.');
+      // 각 파일을 Supabase Storage에 직접 업로드
+      for (let i = 0; i < uploadedFiles.length; i++) {
+        const file = uploadedFiles[i];
+        const progress = ((i + 1) / uploadedFiles.length) * 100;
+        setProcessingProgress(Math.round(progress));
+        
+        console.log(`📤 파일 ${i + 1}/${uploadedFiles.length} 업로드 중: ${file.name}`);
+        
+        // 파일명에서 시퀀스 타입 추출
+        const getSequenceType = (filename: string, index: number): string => {
+          const name = filename.toLowerCase();
+          if (name.includes('t1c') || name.includes('t1ce')) return 'T1CE';
+          if (name.includes('t1n') || name.includes('t1')) return 'T1';
+          if (name.includes('t2')) return 'T2';
+          if (name.includes('flair')) return 'FLAIR';
+          return ['T1', 'T1CE', 'T2', 'FLAIR'][index] || 'T1';
+        };
+        
+        const sequenceType = getSequenceType(file.name, i);
+        const savedFileName = `${sequenceType}_${file.name}`;
+        const storagePath = `uploads/${sessionUuid}/${savedFileName}`;
+        
+        // Supabase Storage에 업로드
+        const { data, error } = await supabase.storage
+          .from('oncotype-files')
+          .upload(storagePath, file, {
+            cacheControl: '3600',
+            upsert: false
+          });
+        
+        if (error) {
+          console.error(`❌ 파일 업로드 실패: ${file.name}`, error);
+          throw new Error(`파일 업로드 실패: ${error.message}`);
+        }
+        
+        console.log(`✅ 파일 ${i + 1}/${uploadedFiles.length} 업로드 완료: ${file.name}`);
+        
+        uploadedFileData.push({
+          sequenceType,
+          originalName: file.name,
+          savedName: savedFileName,
+          storagePath: data.path,
+          size: file.size
+        });
       }
       
-      const uploadResult = await uploadResponse.json();
-      console.log('✅ 파일 업로드 성공:', uploadResult);
+      // 메타데이터를 서버에 저장 (환자 정보 포함)
+      const metadataResponse = await fetch('/api/upload-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sessionId: sessionUuid,
+          patientName: patientInfo.name || 'Unknown Patient',
+          patientGender: patientInfo.gender,
+          patientBirthDate: patientInfo.birthDate,
+          patientScanDate: patientInfo.scanDate,
+          patientWeight: additionalInfo.weight ? parseFloat(additionalInfo.weight) : null,
+          patientHeight: additionalInfo.height ? parseFloat(additionalInfo.height) : null,
+          patientMedicalHistory: additionalInfo.medicalHistory,
+          patientNotes: additionalInfo.notes,
+          files: uploadedFileData
+        })
+      });
+      
+      if (!metadataResponse.ok) {
+        throw new Error('메타데이터 저장에 실패했습니다.');
+      }
+      
+      const metadataResult = await metadataResponse.json();
+      console.log('✅ 메타데이터 저장 성공:', metadataResult);
       
       console.log('✅ 1단계 완료: 파일 저장 및 N4 Bias Correction + ComBat 정규화');
 
@@ -199,7 +265,7 @@ export default function UploadPage() {
         localStorage.setItem('uploadedFileCount', uploadedFiles.length.toString());
         console.log('🎯 대시보드로 이동:', sessionUuid);
         router.push('/dashboard');
-      }, 1000);
+      }, 300);
 
     } catch (error) {
       console.error('❌ 분석 실패:', error);

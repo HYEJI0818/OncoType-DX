@@ -336,3 +336,4 @@ export default function PatientManager({ onPatientSelect }: PatientManagerProps)
     </div>
   )
 }
+

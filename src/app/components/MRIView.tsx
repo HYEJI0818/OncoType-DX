@@ -52,11 +52,23 @@ export default function MRIView({
 
   // 컴포넌트 로드 시 저장된 참고 사항 불러오기
   useEffect(() => {
-    const savedMemo = localStorage.getItem(`patient-notes-${patientId || 'default'}`);
-    if (savedMemo) {
-      setMemoText(savedMemo);
+    // sessionData에서 환자 정보 로드
+    if (sessionData?.patient_info) {
+      const medicalHistory = sessionData.patient_info.medical_history || '';
+      const notes = sessionData.patient_info.notes || '';
+      const combinedNotes = [medicalHistory, notes].filter(Boolean).join('\n\n');
+      
+      if (combinedNotes) {
+        setMemoText(combinedNotes);
+      } else {
+        // sessionData에 없으면 localStorage에서 로드
+        const savedMemo = localStorage.getItem(`patient-notes-${patientId || 'default'}`);
+        if (savedMemo) {
+          setMemoText(savedMemo);
+        }
+      }
     }
-  }, [patientId]);
+  }, [patientId, sessionData]);
   return (
     <div className={`relative ${className}`}>
       {/* 3D 섹션에서는 Breast3DView 사용, 나머지는 NiiVueSliceViewer 사용 */}
@@ -86,10 +98,18 @@ export default function MRIView({
           <div className="relative bg-gray-700 rounded-lg p-4 h-full flex flex-col" style={{ aspectRatio: '1' }}>
             <div className="text-white space-y-3 flex-1">
               <div className="space-y-2 text-sm">
-                <div>• 환자: 홍길순 (F / 48세)</div>
-                <div>• 환자번호: 20241120-001</div>
-                <div>• 촬영일자: 2024-11-15</div>
-                <div>• MRI 장비: Siemens 3T</div>
+                <div>• 환자: {sessionData?.patient_info?.name || '정보 없음'} 
+                  {sessionData?.patient_info?.gender && ` (${sessionData.patient_info.gender === 'male' ? 'M' : sessionData.patient_info.gender === 'female' ? 'F' : sessionData.patient_info.gender})`}
+                </div>
+                {sessionData?.patient_info?.birth_date && (
+                  <div>• 생년월일: {sessionData.patient_info.birth_date}</div>
+                )}
+                {sessionData?.patient_info?.scan_date && (
+                  <div>• 촬영일자: {sessionData.patient_info.scan_date}</div>
+                )}
+                {sessionData?.patient_info?.weight && sessionData?.patient_info?.height && (
+                  <div>• 신체정보: {sessionData.patient_info.height}cm / {sessionData.patient_info.weight}kg</div>
+                )}
               </div>
               
               {/* 참고 사항 입력 박스 */}

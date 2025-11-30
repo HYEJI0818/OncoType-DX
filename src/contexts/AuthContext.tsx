@@ -1,8 +1,6 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { supabase } from '@/lib/supabase';
-import { getSafeSession, isRefreshTokenError, forceSignOut } from '@/lib/auth-utils';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -12,6 +10,8 @@ interface AuthContextType {
   isLoading: boolean;
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
+  setIsAuthenticated: (value: boolean) => void;
+  setUser: (user: any) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -22,162 +22,71 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 페이지 로드 시 로그인 상태 확인
+  // 페이지 로드 시 로그인 상태 확인 (로컬 스토리지에서)
   useEffect(() => {
-    const checkAuth = async () => {
+    const checkAuth = () => {
       try {
-        // 개발 환경에서 Supabase 연결 문제 시 임시 인증 우회
-        if (process.env.NODE_ENV === 'development') {
-          console.log('🔧 개발 환경 - 임시 인증 우회 활성화');
-          setIsAuthenticated(true);
-          setUser({ 
-            id: 'dev-user', 
-            email: 'test@dev.com',
-            user_metadata: { role: 'test', name: 'Test User' }
-          });
-          setUserType('test');
-          setIsLoading(false);
-          return;
+        if (typeof window !== 'undefined') {
+          const savedAuth = localStorage.getItem('auth_state');
+          if (savedAuth) {
+            const authData = JSON.parse(savedAuth);
+            setIsAuthenticated(authData.isAuthenticated);
+            setUser(authData.user);
+            setUserType(authData.userType);
+          }
         }
-
-        const { session, error } = await getSafeSession();
-        
-        if (error && isRefreshTokenError(error)) {
-          console.warn('Refresh token 오류로 인한 로그아웃');
-          setIsAuthenticated(false);
-          setUser(null);
-          setUserType(null);
-          return;
-        }
-        
-        if (session?.user) {
-          setIsAuthenticated(true);
-          setUser(session.user);
-          // 사용자 역할에 따라 userType 설정
-          const role = session.user.user_metadata?.role;
-          setUserType(role === '관리자' ? 'admin' : 'test');
-        } else {
-          setIsAuthenticated(false);
-          setUser(null);
-          setUserType(null);
-        }
-        setIsLoading(false);
       } catch (error) {
-        console.error('인증 확인 중 예외 발생:', error);
-        // 개발 환경에서는 오류 시에도 인증 우회
-        if (process.env.NODE_ENV === 'development') {
-          console.log('🔧 개발 환경 - 오류 시 인증 우회');
-          setIsAuthenticated(true);
-          setUser({ 
-            id: 'dev-user', 
-            email: 'test@dev.com',
-            user_metadata: { role: 'test', name: 'Test User' }
-          });
-          setUserType('test');
-          setIsLoading(false);
-          return;
-        }
-        await forceSignOut();
-        setIsAuthenticated(false);
-        setUser(null);
-        setUserType(null);
+        console.error('인증 상태 확인 중 오류:', error);
+      } finally {
         setIsLoading(false);
       }
     };
 
     checkAuth();
-
-    // 인증 상태 변경 리스너 (개발 환경에서는 비활성화)
-    let subscription: any = null;
-    if (process.env.NODE_ENV !== 'development') {
-      const { data } = supabase.auth.onAuthStateChange(
-        async (event, session) => {
-          console.log('인증 상태 변경:', event, session);
-          
-          if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
-            if (event === 'SIGNED_OUT') {
-              setIsAuthenticated(false);
-              setUser(null);
-              setUserType(null);
-            }
-          }
-          
-          if (session?.user) {
-            setIsAuthenticated(true);
-            setUser(session.user);
-            const role = session.user.user_metadata?.role;
-            setUserType(role === '관리자' ? 'admin' : 'test');
-          } else if (event !== 'TOKEN_REFRESHED') {
-            setIsAuthenticated(false);
-            setUser(null);
-            setUserType(null);
-          }
-        }
-      );
-      subscription = data.subscription;
-    } else {
-      console.log('🔧 개발 환경 - 인증 상태 변경 리스너 비활성화');
-    }
-
-    return () => {
-      if (subscription) {
-        subscription.unsubscribe();
-      }
-    };
   }, []);
 
-  const login = async (username: string, password: string): Promise<boolean> => {
-    try {
-      // 기존 세션 정리
-      await supabase.auth.signOut();
-      
-      // Supabase 이메일 로그인 시도
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: username,
-        password: password,
-      });
-
-      if (error) {
-        console.error('로그인 오류:', error);
-        return false;
+  // 인증 상태가 변경될 때마다 로컬 스토리지에 저장
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (isAuthenticated && user) {
+        localStorage.setItem('auth_state', JSON.stringify({
+          isAuthenticated,
+          user,
+          userType
+        }));
+      } else {
+        localStorage.removeItem('auth_state');
       }
-
-      if (data.user && data.session) {
-        setIsAuthenticated(true);
-        setUser(data.user);
-        const role = data.user.user_metadata?.role;
-        setUserType(role === '관리자' ? 'admin' : 'test');
-        return true;
-      }
-
-      return false;
-    } catch (error) {
-      console.error('로그인 처리 중 오류:', error);
-      return false;
     }
+  }, [isAuthenticated, user, userType]);
+
+  const login = async (username: string, password: string): Promise<boolean> => {
+    // 하드코딩된 로그인: test / 1234만 허용
+    if (username === 'test' && password === '1234') {
+      setIsAuthenticated(true);
+      setUser({
+        id: 'test-user',
+        email: 'test@oncotype.local',
+        user_metadata: {
+          name: '테스트 사용자',
+          role: 'admin'
+        }
+      });
+      setUserType('admin');
+      return true;
+    }
+    
+    return false;
   };
 
-  const logout = async () => {
-    try {
-      await forceSignOut();
-      setIsAuthenticated(false);
-      setUserType(null);
-      setUser(null);
-      
-      // 로그아웃 후 메인 페이지로 리다이렉트
-      if (typeof window !== 'undefined') {
-        window.location.href = '/';
-      }
-    } catch (error) {
-      console.error('로그아웃 중 오류:', error);
-      // 오류가 발생해도 상태는 초기화하고 리다이렉트
-      setIsAuthenticated(false);
-      setUserType(null);
-      setUser(null);
-      
-      if (typeof window !== 'undefined') {
-        window.location.href = '/';
-      }
+  const logout = () => {
+    setIsAuthenticated(false);
+    setUserType(null);
+    setUser(null);
+    
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('auth_state');
+      window.location.href = '/';
     }
   };
 
@@ -189,7 +98,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading: isLoading,
       isLoading, 
       login, 
-      logout 
+      logout,
+      setIsAuthenticated,
+      setUser
     }}>
       {children}
     </AuthContext.Provider>

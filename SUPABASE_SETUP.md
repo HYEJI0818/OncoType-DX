@@ -110,3 +110,4 @@ npm run dev
 - `.env.local` 파일을 git에 커밋하지 않기
 - 테스트 데이터만 사용
 - 개발용 API 키 사용
+

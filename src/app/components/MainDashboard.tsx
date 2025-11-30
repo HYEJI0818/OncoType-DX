@@ -87,81 +87,114 @@ export default function MainDashboard() {
     setTumorOverlayUrl(url);
   };
 
-  // 세션 데이터 로드 함수 (Flask 서버 없이도 작동)
+  // 세션 데이터 로드 함수 (Supabase DB에서 로드)
   const loadSessionData = useCallback(async (sessionId: string) => {
     setIsLoadingSession(true);
     try {
-      console.log('🔄 세션 데이터 로드 중:', sessionId);
+      console.log('🔄 Supabase에서 세션 데이터 로드 중:', sessionId);
       
-      // 먼저 로컬 메타데이터 파일에서 데이터 로드 시도
-      try {
-        const metadataResponse = await fetch(`/uploads/${sessionId}/metadata.json`);
-        if (metadataResponse.ok) {
-          const metadata = await metadataResponse.json();
-          console.log('✅ 로컬 메타데이터에서 세션 데이터 로드:', metadata);
-          
-          // 로컬 메타데이터를 기반으로 시뮬레이션 데이터 생성
-          const mockSessionData = {
-            status: { status: 'completed', progress: 100 },
-            results: { 
-              success: true,
-              tumor_overlay_url: null,
-              analysis_complete: true
-            },
-            ai_analysis: {
-              llm_analysis: {
-                diagnosis: "유방암 의심 소견이 관찰됩니다.",
-                confidence: 87,
-                key_findings: [
-                  "좌측 유방에 불규칙한 경계의 종괴 확인",
-                  "조영증강 패턴이 악성 종양과 일치",
-                  "주변 조직 침윤 소견 동반"
-                ],
-                recommendation: "추가 조영제 검사 및 조직검사 권장",
-                analysis_time: new Date().toISOString()
-              },
-              shapley_values: {
-                values: [
-                  { feature: "Volume", value: 0.45, positive: true },
-                  { feature: "Surface Area", value: 0.32, positive: true },
-                  { feature: "Sphericity", value: -0.18, positive: false },
-                  { feature: "Compactness", value: 0.23, positive: true },
-                  { feature: "Elongation", value: -0.12, positive: false }
-                ]
-              },
-              feature_analysis: {
-                radiomic_features: [
-                  { category: "Shape", feature: "Volume", value: 12.5, unit: "cm³" },
-                  { category: "Shape", feature: "Surface Area", value: 45.2, unit: "cm²" },
-                  { category: "Intensity", feature: "Mean", value: 156.8, unit: "HU" },
-                  { category: "Texture", feature: "Contrast", value: 0.78, unit: "" }
-                ]
-              }
-            }
-          };
-          
-          setSessionData(mockSessionData);
-          return;
-        }
-      } catch (metadataError) {
-        console.log('📝 로컬 메타데이터 로드 실패, Flask 서버 시도...');
+      // Supabase client 가져오기
+      const { supabase } = await import('@/lib/supabase');
+      
+      // 1. 세션 정보 가져오기
+      const { data: sessionData, error: sessionError } = await supabase
+        .from('upload_sessions')
+        .select('*')
+        .eq('session_id', sessionId)
+        .single();
+
+      if (sessionError || !sessionData) {
+        console.error('❌ 세션 조회 실패:', sessionError);
+        throw new Error('세션을 찾을 수 없습니다.');
       }
+
+      console.log('✅ 세션 정보 조회 완료:', sessionData);
+
+      // 2. 파일 정보 가져오기
+      const { data: filesData, error: filesError } = await supabase
+        .from('upload_files')
+        .select('*')
+        .eq('session_id', sessionId);
+
+      if (filesError) {
+        console.error('❌ 파일 정보 조회 실패:', filesError);
+        throw new Error('파일 정보를 가져올 수 없습니다.');
+      }
+
+      console.log('✅ 파일 정보 조회 완료:', filesData);
+
+      // 3. 메타데이터 구성
+      const metadata: any = {
+        session_id: sessionData.session_id,
+        patient_name: sessionData.patient_name,
+        patient_gender: sessionData.patient_gender,
+        patient_birth_date: sessionData.patient_birth_date,
+        patient_scan_date: sessionData.patient_scan_date,
+        patient_weight: sessionData.patient_weight,
+        patient_height: sessionData.patient_height,
+        patient_medical_history: sessionData.patient_medical_history,
+        patient_notes: sessionData.patient_notes,
+        created_at: sessionData.created_at,
+        files: {}
+      };
+
+      // 파일 정보를 sequence_type별로 정리하고 Supabase Storage URL 생성
+      for (const file of filesData) {
+        const { data: urlData } = supabase.storage
+          .from('oncotype-files')
+          .getPublicUrl(file.storage_path);
+
+        metadata.files[file.sequence_type] = {
+          original_filename: file.original_filename,
+          saved_filename: file.saved_filename,
+          file_path: urlData.publicUrl, // Supabase Storage public URL
+          storage_path: file.storage_path,
+          file_size: file.file_size,
+          uploaded_at: file.uploaded_at
+        };
+
+        console.log(`📁 파일 URL 생성 (${file.sequence_type}):`, urlData.publicUrl);
+      }
+
+      console.log('✅ Supabase에서 세션 데이터 로드 완료:', metadata);
       
-      // Flask 서버 비활성화됨 - 시뮬레이션 데이터만 사용
-      console.log('📝 Flask 서버 비활성화 - 시뮬레이션 데이터만 사용');
-      
-      // 기본 시뮬레이션 데이터 설정
-      console.log('✅ 시뮬레이션 데이터로 진행');
-      const mockSessionData = {
+      // 세션 데이터 구성 (환자 정보 포함)
+      const completeSessionData = {
         status: { status: 'completed', progress: 100 },
         results: { 
           success: true,
           tumor_overlay_url: null,
           analysis_complete: true
+        },
+        metadata: metadata, // 환자 정보와 파일 정보 포함
+        patient_info: {
+          name: metadata.patient_name,
+          gender: metadata.patient_gender,
+          birth_date: metadata.patient_birth_date,
+          scan_date: metadata.patient_scan_date,
+          weight: metadata.patient_weight,
+          height: metadata.patient_height,
+          medical_history: metadata.patient_medical_history,
+          notes: metadata.patient_notes
         }
       };
       
-      setSessionData(mockSessionData);
+      setSessionData(completeSessionData);
+
+      // 첫 번째 파일을 3D 뷰어에 자동 로드
+      const sequences = ['T1', 'T1CE', 'T2', 'FLAIR'];
+      const firstAvailableSequence = sequences.find(seq => metadata.files[seq]);
+      
+      if (firstAvailableSequence && metadata.files[firstAvailableSequence]) {
+        const firstFileUrl = metadata.files[firstAvailableSequence].file_path;
+        console.log('🎯 첫 번째 파일 자동 로드:', firstFileUrl);
+        
+        setOriginalNiftiUrl(firstFileUrl);
+        setSelectedViews(new Set(['3d']));
+        setUploadedImages({
+          breast3d: firstFileUrl
+        });
+      }
       
     } catch (error) {
       console.error('❌ 세션 데이터 로드 실패:', error);
@@ -182,13 +215,6 @@ export default function MainDashboard() {
       loadSessionData(currentSessionId);
     } else {
       console.log('📝 저장된 세션 없음 - 일반 뷰어 모드로 실행');
-      
-      // 테스트를 위해 임시로 세션 정보 설정
-      console.log('🧪 테스트용 세션 정보 설정');
-      localStorage.setItem('hasUploadedFiles', 'true');
-      localStorage.setItem('currentSessionId', 'session_test_123');
-      setSessionId('session_test_123');
-      loadSessionData('session_test_123');
     }
   }, [loadSessionData]);
 
@@ -201,61 +227,7 @@ export default function MainDashboard() {
     niftiImage?: ArrayBuffer;
   }>({});
 
-  // UUID 기반 업로드된 파일 데이터 로드
-  useEffect(() => {
-    const loadUploadedData = async () => {
-      try {
-        if (!sessionId) return;
-        
-        console.log('🔄 UUID 기반 파일 데이터 로드 중:', sessionId);
-        
-        // 메타데이터 파일 로드
-        const metadataResponse = await fetch(`/uploads/${sessionId}/metadata.json`);
-        if (metadataResponse.ok) {
-          const metadata = await metadataResponse.json();
-          console.log('✅ 메타데이터 로드 성공:', metadata);
-          
-          // 첫 번째 파일을 3D 뷰어에 로드
-          const sequences = ['T1', 'T1CE', 'T2', 'FLAIR'];
-          const firstAvailableSequence = sequences.find(seq => metadata.files[seq]);
-          
-          if (firstAvailableSequence && metadata.files[firstAvailableSequence]) {
-            const firstFileUrl = `/${metadata.files[firstAvailableSequence].file_path}`;
-            console.log('🎯 첫 번째 파일 로드:', firstFileUrl);
-            
-            setOriginalNiftiUrl(firstFileUrl);
-            setSelectedViews(new Set(['3d']));
-            setUploadedImages({
-              breast3d: firstFileUrl
-            });
-            
-            console.log('✅ UUID 기반 3D 뷰어 활성화 완료');
-          }
-        } else {
-          console.warn('⚠️ 메타데이터 파일을 찾을 수 없습니다. 기본 샘플 데이터를 로드합니다.');
-          
-          // 기본 샘플 데이터 로드
-          const sampleNiftiUrl = '/uploads/19824666-8e5d-4c05-8ce9-336e82132d93/T1_BraTS-GLI-01532-000-t1n.nii.gz';
-          const response = await fetch(sampleNiftiUrl, { method: 'HEAD' });
-          if (response.ok) {
-            setOriginalNiftiUrl(sampleNiftiUrl);
-            setSelectedViews(new Set(['3d']));
-            setUploadedImages({
-              breast3d: sampleNiftiUrl
-            });
-            console.log('✅ 기본 샘플 데이터 로드 완료');
-          }
-        }
-      } catch (error) {
-        console.error('❌ 파일 데이터 로드 실패:', error);
-      }
-    };
-
-    // 세션이 설정된 후 업로드된 데이터 로드
-    if (sessionId) {
-      setTimeout(loadUploadedData, 1000);
-    }
-  }, [sessionId]);
+  // UUID 기반 업로드된 파일 데이터 로드는 loadSessionData에서 처리하므로 제거됨
 
   // 디버깅 로그를 개발 환경에서만 실행하도록 최적화 (빈도 줄임)
   useEffect(() => {

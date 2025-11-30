@@ -9,15 +9,21 @@ export default function TestLoginPage() {
   const createTestUser = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/create-test-user', {
+      const response = await fetch('/api/auth/create-employee', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({
+          employeeId: 'test',
+          password: '1234',
+          name: '테스트 사용자',
+          role: 'admin'
+        })
       })
       const data = await response.json()
       setResult(data)
-    } catch (error) {
+    } catch (error: any) {
       setResult({ error: error.message })
     } finally {
       setLoading(false)
@@ -39,7 +45,7 @@ export default function TestLoginPage() {
       })
       const data = await response.json()
       setResult(data)
-    } catch (error) {
+    } catch (error: any) {
       setResult({ error: error.message })
     } finally {
       setLoading(false)
@@ -89,8 +95,8 @@ export default function TestLoginPage() {
         <div className="bg-blue-50 p-6 rounded-lg mt-6">
           <h3 className="text-lg font-semibold mb-2">사용 방법</h3>
           <ol className="list-decimal list-inside space-y-2">
-            <li>먼저 "테스트 사용자 생성" 버튼을 클릭하세요</li>
-            <li>성공하면 "로그인 테스트" 버튼을 클릭하세요</li>
+            <li>먼저 테스트 사용자 생성 버튼을 클릭하세요</li>
+            <li>성공하면 로그인 테스트 버튼을 클릭하세요</li>
             <li>모든 것이 정상이면 <a href="/login" className="text-blue-600 underline">/login</a> 페이지에서 test/1234로 로그인할 수 있습니다</li>
           </ol>
         </div>

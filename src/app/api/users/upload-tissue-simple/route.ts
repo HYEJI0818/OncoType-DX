@@ -13,6 +13,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '파일이 없습니다.' }, { status: 400 });
     }
 
+    // 파일 크기 체크 (최대 100MB)
+    const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { error: `파일이 너무 큽니다. 최대 100MB까지 업로드 가능합니다.` },
+        { status: 413 }
+      );
+    }
+
     console.log(`🎯 Tumor 파일 업로드 시작:`, file.name, `크기: ${file.size} bytes`);
 
     // 고유한 파일명 생성 (환자 ID 없이)

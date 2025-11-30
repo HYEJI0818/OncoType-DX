@@ -20,6 +20,28 @@ export async function POST(
 
     console.log(`환자 ${patientId}에게 ${files.length}개 파일 업로드 시작`);
 
+    // 파일 크기 체크 (개별 파일 최대 100MB, 전체 최대 500MB)
+    const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+    const MAX_TOTAL_SIZE = 500 * 1024 * 1024; // 500MB
+    
+    let totalSize = 0;
+    for (const file of files) {
+      if (file.size > MAX_FILE_SIZE) {
+        return NextResponse.json(
+          { error: `파일 "${file.name}"이 너무 큽니다. 최대 100MB까지 업로드 가능합니다.` },
+          { status: 413 }
+        );
+      }
+      totalSize += file.size;
+    }
+    
+    if (totalSize > MAX_TOTAL_SIZE) {
+      return NextResponse.json(
+        { error: `전체 파일 크기가 너무 큽니다. 최대 500MB까지 업로드 가능합니다.` },
+        { status: 413 }
+      );
+    }
+
     // 환자 존재 확인
     const { data: patient, error: patientError } = await supabase
       .from('patients')

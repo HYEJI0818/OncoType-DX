@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readFile } from 'fs/promises';
-import { join } from 'path';
-import { existsSync } from 'fs';
+import { createClient } from '@supabase/supabase-js';
 
 export async function GET(
   request: NextRequest,
@@ -15,19 +13,25 @@ export async function GET(
       return NextResponse.json({ error: '파일 경로가 필요합니다.' }, { status: 400 });
     }
 
-    // uploads 폴더의 파일 경로 구성
-    const filePath = join(process.cwd(), 'uploads', ...path);
-    
-    console.log('📁 파일 요청:', filePath);
+    // 모든 환경에서 Supabase Storage 사용
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
 
-    // 파일 존재 확인
-    if (!existsSync(filePath)) {
-      console.log('❌ 파일을 찾을 수 없습니다:', filePath);
+    const filePath = path.join('/');
+    console.log('📁 Supabase Storage 파일 요청:', filePath);
+
+    const { data, error } = await supabase.storage
+        .from('patient-files')
+      .download(filePath);
+
+    if (error) {
+      console.log('❌ Supabase Storage에서 파일을 찾을 수 없습니다:', error);
       return NextResponse.json({ error: '파일을 찾을 수 없습니다.' }, { status: 404 });
     }
 
-    // 파일 읽기
-    const fileBuffer = await readFile(filePath);
+    const fileBuffer = Buffer.from(await data.arrayBuffer());
     
     // 파일 확장자에 따른 Content-Type 설정
     const fileName = path[path.length - 1];
@@ -80,13 +84,23 @@ export async function HEAD(
       return new NextResponse(null, { status: 400 });
     }
 
-    const filePath = join(process.cwd(), 'uploads', ...path);
+    // 모든 환경에서 Supabase Storage 사용
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const filePath = path.join('/');
     
-    if (!existsSync(filePath)) {
+    const { data, error } = await supabase.storage
+        .from('patient-files')
+      .download(filePath);
+
+    if (error) {
       return new NextResponse(null, { status: 404 });
     }
 
-    const fileBuffer = await readFile(filePath);
+    const fileBuffer = Buffer.from(await data.arrayBuffer());
     const fileName = path[path.length - 1];
     let contentType = 'application/octet-stream';
     
