@@ -1,72 +1,99 @@
 import { NextResponse } from 'next/server';
-import { supabase, supabaseAdmin } from '@/lib/supabase';
+import { performHealthCheck, StorageService, PatientService } from '@/lib/supabase-utils';
 
 export async function GET() {
   try {
-    console.log('Supabase 연결 테스트 시작...');
+    console.log('🔍 Supabase 종합 연결 테스트 시작...');
     
-    // 1. 데이터베이스 연결 테스트
-    const { data: patients, error: dbError } = await supabase
-      .from('patients')
-      .select('*')
-      .limit(1);
+    // 1. 헬스체크 수행
+    const healthStatus = await performHealthCheck();
+    console.log('헬스체크 결과:', healthStatus);
 
-    if (dbError) {
-      return NextResponse.json({
-        success: false,
-        error: 'Database connection failed',
-        details: dbError.message
-      }, { status: 500 });
+    // 2. 환자 데이터 샘플 조회
+    let patients = [];
+    let patientsError = null;
+    try {
+      patients = await PatientService.getAllPatients();
+    } catch (error: any) {
+      patientsError = error.message;
     }
 
-    // 2. Storage 연결 테스트 (관리자 클라이언트 사용)
-    const storageClient = supabaseAdmin || supabase;
-    const { data: buckets, error: storageError } = await storageClient.storage.listBuckets();
-    
-    console.log('Storage buckets:', buckets);
-    console.log('Storage error:', storageError);
-    
-    if (storageError) {
-      return NextResponse.json({
-        success: false,
-        error: 'Storage connection failed',
-        details: storageError.message
-      }, { status: 500 });
+    // 3. Storage 정보 조회
+    const storageInfo = await StorageService.getStorageUsage();
+    console.log('Storage 정보:', storageInfo);
+
+    // 4. 버킷 목록 조회
+    let buckets = [];
+    let bucketsError = null;
+    try {
+      buckets = await StorageService.listBuckets();
+    } catch (error: any) {
+      bucketsError = error.message;
     }
 
-    // 3. 특정 파일 존재 확인 (bucket이 있는 경우에만)
-    let files = null;
-    let listError = null;
-    
-    if (buckets && buckets.length > 0) {
-      const bucketName = buckets.find(b => b.name.includes('patient')) || buckets[0];
-      const { data: fileData, error: fileError } = await storageClient.storage
-        .from(bucketName.name)
-        .list('patients/6', { limit: 5 });
-      files = fileData;
-      listError = fileError;
-      console.log(`Files in ${bucketName.name}:`, files);
+    // 5. 샘플 파일 목록 조회
+    let sampleFiles = [];
+    let filesError = null;
+    try {
+      sampleFiles = await StorageService.listFiles('patients');
+    } catch (error: any) {
+      filesError = error.message;
     }
 
-    return NextResponse.json({
+    // 6. 환경 변수 확인
+    const envCheck = {
+      supabase_url: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+      anon_key: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      service_key: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+      google_translate: !!process.env.GOOGLE_TRANSLATE_API_KEY
+    };
+
+    const response = {
       success: true,
+      timestamp: new Date().toISOString(),
+      health: healthStatus,
+      environment: envCheck,
       database: {
-        connected: true,
-        patients_count: patients?.length || 0,
-        sample_patient: patients?.[0] || null
+        connected: healthStatus.database,
+        patients_count: patients.length,
+        sample_patients: patients.slice(0, 3).map(p => ({
+          id: p.id,
+          name: p.name,
+          department: p.department,
+          created_at: p.created_at
+        })),
+        error: patientsError
       },
       storage: {
-        connected: true,
-        buckets: buckets?.map(b => b.name) || [],
-        patient_files: files?.length || 0,
-        sample_files: files?.slice(0, 3) || []
+        connected: healthStatus.storage,
+        usage: storageInfo,
+        buckets: buckets?.map(b => ({
+          id: b.id,
+          name: b.name,
+          public: b.public,
+          created_at: b.created_at
+        })) || [],
+        sample_files: sampleFiles?.slice(0, 5).map(f => ({
+          name: f.name,
+          size: f.metadata?.size,
+          last_modified: f.updated_at
+        })) || [],
+        buckets_error: bucketsError,
+        files_error: filesError
+      },
+      auth: {
+        connected: healthStatus.auth
       }
-    });
+    };
 
-  } catch (error) {
-    console.error('Supabase 테스트 실패:', error);
+    console.log('✅ 테스트 완료');
+    return NextResponse.json(response);
+
+  } catch (error: any) {
+    console.error('❌ Supabase 테스트 실패:', error);
     return NextResponse.json({
       success: false,
+      timestamp: new Date().toISOString(),
       error: 'Connection test failed',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });

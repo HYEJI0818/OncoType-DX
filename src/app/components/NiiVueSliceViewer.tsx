@@ -682,7 +682,7 @@ export default function NiiVueSliceViewer({
       }
     };
     loadData();
-  }, [originalNiftiUrl, niftiImage, loadFromOriginalUrl, loadFromBuffer]);
+  }, [originalNiftiUrl, niftiImage]);
 
   // 슬라이스 타입 설정 (plane에 따라) - 최적화된 버전
   useEffect(() => {
